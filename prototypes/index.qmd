@@ -1,6 +1,10 @@
 ---
 title: "Prototypes"
 # Type view: every page whose `type` is `prototype`, newest first.
+# Type, folder, title, and sort come from data/types.yml, and `contents:` must
+# list every folder in it (Quarto can't read it; tests/test_site_skeleton.py
+# fails on drift). No theme column: a listing can only show the raw slug, not
+# the display name; the Theme views group pages by theme instead.
 listing:
   id: prototypes
   contents:
@@ -18,9 +22,8 @@ listing:
     type: prototype
   type: table
   sort: ["date desc", "title"]
-  fields: [date, title, theme, maturity]
+  fields: [date, title, maturity]
   field-display-names:
-    theme: "Theme"
     maturity: "Maturity"
   sort-ui: false
 ---

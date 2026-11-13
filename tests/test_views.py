@@ -5,10 +5,13 @@ import re
 import shutil
 import subprocess
 
+import pytest
+
 from conftest import REPO
-from scripts.metadata import CONTENT_FOLDERS
+from scripts.page_types import CONTENT_FOLDERS
 from scripts.themes import load_themes
-from scripts.view_check import check, listed, listings
+from scripts.view_check import check, listings
+from test_site_skeleton import render_copy_with
 
 LLM_MECHANICS = [  # the llm-mechanics samples, alphabetical by title
     "topics/sample-leading-tokenization.html",
@@ -19,20 +22,20 @@ LLM_MECHANICS = [  # the llm-mechanics samples, alphabetical by title
 
 
 def test_dictionary_lists_its_terms(site):
-    assert listed(site, "dictionary/index.html", "dictionary") == ["dictionary/sample-token.html"]
+    assert listings(site, "dictionary/index.html")["dictionary"] == ["dictionary/sample-token.html"]
 
 
 def test_topics_are_listed_newest_first(site):
-    assert listed(site, "topics/index.html", "topics") == [
+    assert listings(site, "topics/index.html")["topics"] == [
         "topics/sample-leading-tokenization.html",
         "topics/sample-tokenization.html",
     ]
 
 
-def test_recent_shows_every_page_as_cards_newest_first(site):
+def test_recent_shows_pages_as_cards_newest_first(site):
     html = (site / "recent.html").read_text()
     assert "quarto-listing-container-grid" in html
-    assert listed(site, "recent.html", "recent") == [
+    assert listings(site, "recent.html")["recent"] == [
         "essays/sample-essay.html",
         "tools/sample-tool.html",
         "prototypes/sample-prototype.html",
@@ -42,9 +45,18 @@ def test_recent_shows_every_page_as_cards_newest_first(site):
     ]
 
 
+def test_type_views_never_show_a_raw_theme_slug(site):
+    """A listing can't map a slug to its display name, so Type views drop the column."""
+    for folder in CONTENT_FOLDERS:
+        html = (site / folder / "index.html").read_text()
+        main = html[html.index('<main class="content"'):html.index("</main>")]
+        cells = {c.strip() for c in re.findall(r">([^<>]+)<", main)}
+        assert not cells & {t.slug for t in load_themes()}, folder
+
+
 def test_theme_page_lists_every_page_of_its_theme_any_type(site):
-    assert listed(site, "themes/llm-mechanics.html", "theme") == LLM_MECHANICS
-    assert listed(site, "themes/ai-assisted-engineering.html", "theme") == [
+    assert listings(site, "themes/llm-mechanics.html")["theme"] == LLM_MECHANICS
+    assert listings(site, "themes/ai-assisted-engineering.html")["theme"] == [
         "essays/sample-essay.html"
     ]
 
@@ -198,6 +210,128 @@ def test_start_here_points_at_the_path_and_recent_views(site):
     content = html[html.index('<main class="content"'):]
     assert 'href="./path.html"' in content
     assert 'href="./recent.html"' in content
+
+
+# A variant repo: themes.yml out of stage order, and more pages than Recent shows.
+
+REORDERED_THEMES = """\
+- slug: leading-teams
+  title: Leading AI engineering teams
+  stage:
+- slug: evals
+  title: Evals
+  stage: 3
+- slug: production
+  title: Production
+  stage: 6
+- slug: llm-mechanics
+  title: LLM mechanics for builders
+  stage: 1
+- slug: ai-assisted-engineering
+  title: AI-assisted engineering
+  stage:
+- slug: agents
+  title: Agents
+  stage: 5
+- slug: model-apis
+  title: Building with model APIs
+  stage: 2
+- slug: context-and-retrieval
+  title: Context engineering and retrieval
+  stage: 4
+"""
+
+NEWER = {  # six pages newer than every sample: 12 content pages in all
+    f"essays/newer-{d}.qmd": (
+        f"---\ntitle: Newer {d}\ntype: essay\ntheme: evals\nstage: 3\n"
+        f"maturity: seed\ndate: 2026-12-0{d}\n---\n\nBody.\n"
+    )
+    for d in range(1, 7)
+}
+
+
+@pytest.fixture(scope="module")
+def variant(tmp_path_factory):
+    """(root, rendered _site/) of the variant repo."""
+    files = {"data/themes.yml": REORDERED_THEMES, **NEWER}
+    site = render_copy_with(tmp_path_factory.mktemp("variant"), files)
+    return site.parent, site
+
+
+def test_path_orders_themes_by_stage_not_file_order(variant):
+    _, site = variant
+    assert list(listings(site, "path.html")) == [
+        "path-llm-mechanics",
+        "path-model-apis",
+        "path-evals",
+        "path-context-and-retrieval",
+        "path-agents",
+        "path-production",
+        "path-leading-teams",  # stageless last, in file order
+        "path-ai-assisted-engineering",
+    ]
+
+
+def test_start_here_orders_themes_by_stage_not_file_order(variant):
+    _, site = variant
+    index = (site / "index.html").read_text()
+    assert re.findall(r'<span class="listing-title">(.*?)</span>', index) == [
+        "LLM mechanics for builders",
+        "Building with model APIs",
+        "Evals",
+        "Context engineering and retrieval",
+        "Agents",
+        "Production",
+        "Leading AI engineering teams",
+        "AI-assisted engineering",
+    ]
+
+
+def test_recent_shows_only_the_newest_ten(variant):
+    _, site = variant
+    assert listings(site, "recent.html")["recent"] == [
+        "essays/newer-6.html",
+        "essays/newer-5.html",
+        "essays/newer-4.html",
+        "essays/newer-3.html",
+        "essays/newer-2.html",
+        "essays/newer-1.html",
+        "essays/sample-essay.html",
+        "tools/sample-tool.html",
+        "prototypes/sample-prototype.html",
+        "topics/sample-leading-tokenization.html",
+    ]
+
+
+def test_view_check_passes_on_the_variant(variant):
+    root, site = variant
+    assert check(root, site, themes_file=root / "data/themes.yml") == []
+
+
+def test_view_check_orders_stageless_themes_by_file_order(site, tmp_path):
+    """Swapping the two stageless themes in the data file changes the expected Path."""
+    themes = tmp_path / "themes.yml"
+    themes.write_text(REORDERED_THEMES)
+    staged = (
+        "path-llm-mechanics, path-model-apis, path-evals, "
+        "path-context-and-retrieval, path-agents, path-production"
+    )
+    assert check(REPO, site, themes_file=themes) == [
+        f"path.html: theme sections are out of path order: expected {staged}, "
+        f"path-leading-teams, path-ai-assisted-engineering; got {staged}, "
+        "path-ai-assisted-engineering, path-leading-teams"
+    ]
+
+
+def test_view_check_expects_recent_to_drop_pages_older_than_the_newest_ten(site, tmp_path):
+    root = source_copy(tmp_path, NEWER)  # the real site has rendered none of NEWER
+    recent = [e for e in check(root, site) if e.startswith("recent.html")]
+    assert recent == [
+        f'recent.html: listing "recent" is missing essays/newer-{d}.html' for d in range(6, 0, -1)
+    ] + [
+        'recent.html: listing "recent" lists unexpected topics/sample-tokenization.html',
+        'recent.html: listing "recent" lists unexpected dictionary/sample-token.html',
+    ]
 
 
 def test_view_check_is_the_last_step_of_make_check():

@@ -2,7 +2,9 @@
 # read this file; nothing else may hard-code the themes. ROADMAP.md stays the
 # human-readable plan, and the two must agree.
 #
-# Order is path order: staged themes by stage, then themes without a stage.
+# Path order comes from `stage`, not file position: staged themes by stage,
+# then themes without a stage. File order only orders the stageless themes
+# (and any that share a stage). Keep the file in path order anyway, for reading.
 # `stage` is blank (null) for themes without a stage.
 
 - slug: llm-mechanics

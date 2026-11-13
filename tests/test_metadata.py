@@ -130,7 +130,47 @@ def test_date_that_is_not_a_calendar_date_fails(tmp_path, date):
 def test_optional_fields_of_the_right_shape_pass(tmp_path):
     meta = {**VALID, "prereqs": ["eval-datasets"], "video": "https://youtu.be/x"}
     write_page(tmp_path, "topics/judge.qmd", meta)
+    write_page(tmp_path, "dictionary/eval-datasets.qmd", {**VALID, "type": "term"})
     assert validate(tmp_path) == []
+
+
+def test_prereq_in_a_subfolder_of_another_content_folder_passes(tmp_path):
+    write_page(tmp_path, "topics/judge.qmd", {**VALID, "prereqs": ["rubric"]})
+    write_page(tmp_path, "essays/2026/rubric.qmd", {**VALID, "type": "essay"})
+    assert validate(tmp_path) == []
+
+
+def test_prereq_that_is_not_a_string_fails(tmp_path):
+    write_page(tmp_path, "topics/judge.qmd", {**VALID, "prereqs": [42, {"a": 1}]})
+    assert validate(tmp_path) == [
+        "topics/judge.qmd: prereq 42 must be a page slug (a string)",
+        "topics/judge.qmd: prereq {'a': 1} must be a page slug (a string)",
+    ]
+
+
+def test_prereq_naming_no_content_page_fails(tmp_path):
+    write_page(tmp_path, "topics/judge.qmd", {**VALID, "prereqs": ["eval-datasets"]})
+    write_page(tmp_path, "learning/evals/eval-datasets.qmd", {"title": "Not content"})
+    assert validate(tmp_path) == [
+        'topics/judge.qmd: prereq "eval-datasets" names no content page'
+    ]
+
+
+def test_prereq_naming_a_folder_index_view_fails(tmp_path):
+    write_page(tmp_path, "topics/judge.qmd", {**VALID, "prereqs": ["index"]})
+    write_page(tmp_path, "dictionary/index.qmd", {"title": "Dictionary", "listing": {}})
+    assert validate(tmp_path) == [
+        'topics/judge.qmd: prereq "index" names a folder index view, not a content page'
+    ]
+
+
+def test_prereq_naming_a_slug_in_two_folders_fails(tmp_path):
+    write_page(tmp_path, "topics/judge.qmd", {**VALID, "prereqs": ["token"]})
+    write_page(tmp_path, "topics/token.qmd", VALID)
+    write_page(tmp_path, "dictionary/token.md", {**VALID, "type": "term"})
+    assert validate(tmp_path) == [
+        'topics/judge.qmd: prereq "token" is ambiguous: dictionary/token.md, topics/token.qmd'
+    ]
 
 
 def test_every_failure_is_reported_in_one_run(tmp_path):
@@ -190,6 +230,17 @@ def test_check_is_part_of_make_check():
         ["make", "-n", "check"], cwd=REPO, capture_output=True, text=True, check=True
     )
     assert "check-metadata" in dry_run.stdout
+
+
+def test_types_and_folders_come_only_from_the_types_data_file(tmp_path):
+    types = tmp_path / "types.yml"
+    types.write_text("- type: recipe\n  folder: recipes\n  title: Recipes\n  sort: title\n")
+    write_page(tmp_path, "recipes/soup.qmd", {**VALID, "type": "recipe"})
+    write_page(tmp_path, "recipes/stew.qmd", VALID)
+    write_page(tmp_path, "topics/judge.qmd", {"title": "Not validated"})
+    assert validate(tmp_path, types_file=types) == [
+        'recipes/stew.qmd: type "topic" is not one of: recipe'
+    ]
 
 
 def test_themes_come_only_from_the_themes_data_file(tmp_path):

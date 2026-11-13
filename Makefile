@@ -2,7 +2,7 @@
 #
 #   make preview   live local preview while writing
 #   make render    render the site into _site/
-#   make check     render, then run every check step (what CI runs)
+#   make check     validate metadata, render, then check links and views (what CI runs)
 #   make test      run the tests for the check scripts (tests/)
 #
 # Python comes from a local .venv built from requirements.txt. Quarto runs
@@ -14,12 +14,12 @@ QUARTO := QUARTO_PYTHON=$(abspath $(PYTHON)) quarto
 
 # Check steps, run in this order by `make check`. To add one, write
 # scripts/<name>.py (exits non-zero and names the file and rule on failure),
-# add a `check-<name>` target below, and append it here. Planned order:
-# render -> link check -> metadata validation -> view check. Metadata
-# validation reads source front matter, so it does not depend on render.
-CHECK_STEPS := render
+# add a `check-<name>` target below, and append it here. Metadata validation
+# reads source front matter, so it runs first: a bad page fails fast, before
+# the slow render. The link and view checks read the rendered site.
+CHECK_STEPS := check-metadata
+CHECK_STEPS += render
 CHECK_STEPS += check-links
-CHECK_STEPS += check-metadata
 CHECK_STEPS += check-views
 
 # Root the check steps run against (tests point it at temp-dir fixtures).

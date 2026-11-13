@@ -1,4 +1,4 @@
-"""Validate content-page front matter against ADR-0001 and the themes data file.
+"""Validate content-page front matter against ADR-0001 and the data files.
 
 Runs on source files, before render: an invalid page would otherwise just be
 missing from the views. Every failure names the file and the rule broken, and
@@ -13,15 +13,14 @@ from pathlib import Path
 
 import yaml
 
+from scripts.page_types import CONTENT_FOLDERS, TYPES_FILE, load_types
 from scripts.themes import THEMES_FILE, load_themes
 
-CONTENT_FOLDERS = ["topics", "dictionary", "essays", "prototypes", "tools"]
 PAGE_SUFFIXES = {".qmd", ".md"}
 # `date` is required because the Recent view sorts on it: Quarto lists an
 # undated page as the newest, so a missing date would silently misorder it.
 REQUIRED = ["title", "type", "theme", "maturity", "date"]
-ALLOWED = {
-    "type": ["topic", "term", "essay", "prototype", "tool"],
+ALLOWED = {  # `type` comes from data/types.yml
     "lens": ["practitioner", "leader"],  # absent means practitioner
     "maturity": ["seed", "draft", "solid"],
 }
@@ -31,11 +30,14 @@ class FrontMatterError(Exception):
     pass
 
 
-def content_pages(root: Path) -> list[Path]:
-    """Pages in the content folders. A folder's `index` page is a view, not content."""
+def content_pages(root: Path, folders: list[str] = CONTENT_FOLDERS) -> list[Path]:
+    """Pages in the content folders, subfolders included.
+
+    A folder's `index` page is a view, not content.
+    """
     pages = [
         p
-        for folder in CONTENT_FOLDERS
+        for folder in folders
         for p in (root / folder).rglob("*")
         if p.suffix in PAGE_SUFFIXES and p.stem != "index"
     ]
@@ -88,10 +90,34 @@ def page_date(meta: dict) -> datetime.date | None:
     return None
 
 
-def check_page(meta: dict, stages: dict[str, int | None]) -> list[str]:
+def check_prereqs(prereqs: list, slugs: dict[str, list[str]]) -> list[str]:
+    """Each prereq names exactly one content page by its file stem (its slug).
+
+    `slugs` maps each content page's stem to its paths. Folder `index` pages are
+    views, never prereqs. filters/page-layout.lua resolves prereqs the same way.
+    """
+    errors = []
+    for slug in prereqs:
+        if not isinstance(slug, str):
+            errors.append(f"prereq {slug!r} must be a page slug (a string)")
+        elif slug == "index":
+            errors.append(f'prereq "{slug}" names a folder index view, not a content page')
+        elif slug not in slugs:
+            errors.append(f'prereq "{slug}" names no content page')
+        elif len(slugs[slug]) > 1:
+            errors.append(f'prereq "{slug}" is ambiguous: {", ".join(slugs[slug])}')
+    return errors
+
+
+def check_page(
+    meta: dict,
+    stages: dict[str, int | None],
+    types: list[str],
+    slugs: dict[str, list[str]],
+) -> list[str]:
     """Rules broken by one page's front matter, in a stable order."""
     errors = [f'required field "{f}" is missing' for f in REQUIRED if f not in meta]
-    for field, allowed in ALLOWED.items():
+    for field, allowed in {"type": types, **ALLOWED}.items():
         if field in meta and meta[field] not in allowed:
             errors.append(f'{field} "{meta[field]}" is not one of: {", ".join(allowed)}')
     if "theme" in meta:
@@ -100,8 +126,11 @@ def check_page(meta: dict, stages: dict[str, int | None]) -> list[str]:
             errors += check_stage(meta, theme, stages[theme])
         else:
             errors.append(f'theme "{theme}" is not a known theme slug (see data/themes.yml)')
-    if "prereqs" in meta and not isinstance(meta["prereqs"], list):
-        errors.append("prereqs must be a list")
+    if "prereqs" in meta:
+        if isinstance(meta["prereqs"], list):
+            errors += check_prereqs(meta["prereqs"], slugs)
+        else:
+            errors.append("prereqs must be a list")
     if "date" in meta and page_date(meta) is None:
         errors.append("date must be a YYYY-MM-DD date")
     if "video" in meta and not isinstance(meta["video"], str):
@@ -109,14 +138,22 @@ def check_page(meta: dict, stages: dict[str, int | None]) -> list[str]:
     return errors
 
 
-def validate(root: Path, themes_file: Path = THEMES_FILE) -> list[str]:
+def validate(
+    root: Path, themes_file: Path = THEMES_FILE, types_file: Path = TYPES_FILE
+) -> list[str]:
     """Return every failure as `<path relative to root>: <rule broken>`."""
     stages = {t.slug: t.stage for t in load_themes(themes_file)}
+    page_types = load_types(types_file)
+    types = [t.type for t in page_types]
+    pages = content_pages(root, [t.folder for t in page_types])
+    slugs: dict[str, list[str]] = {}
+    for path in pages:
+        slugs.setdefault(path.stem, []).append(path.relative_to(root).as_posix())
     errors = []
-    for path in content_pages(root):
+    for path in pages:
         rel = path.relative_to(root).as_posix()
         try:
-            problems = check_page(read_front_matter(path), stages)
+            problems = check_page(read_front_matter(path), stages, types, slugs)
         except FrontMatterError as e:
             problems = [str(e)]
         errors += [f"{rel}: {p}" for p in problems]

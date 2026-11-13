@@ -16,7 +16,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from scripts.metadata import FrontMatterError, content_pages, page_date, read_front_matter
-from scripts.themes import THEMES_FILE, Theme, load_themes
+from scripts.page_types import PageType, load_types
+from scripts.themes import THEMES_FILE, Theme, load_themes, path_order
 
 # A listing's container div; Quarto writes its `id` and `class` in either order.
 CONTAINER = re.compile(
@@ -42,21 +43,7 @@ def listings(site: Path, view: str) -> dict[str, list[str]]:
     return result
 
 
-def listed(site: Path, view: str, listing: str) -> list[str]:
-    """Pages one listing on `view` links to, in order."""
-    return listings(site, view)[listing]
-
-
 # What each view should list, derived from source metadata.
-
-TYPE_VIEWS = {  # page type -> the folder whose index page is its Type view
-    "topic": "topics",
-    "term": "dictionary",
-    "essay": "essays",
-    "prototype": "prototypes",
-    "tool": "tools",
-}
-ALPHABETICAL_TYPES = {"term"}  # the dictionary reads like one; other types are newest first
 
 
 @dataclass(frozen=True)
@@ -93,13 +80,20 @@ def newest_first(pages: list[Page]) -> list[str]:
     return [p.html for p in sorted(pages, key=key)]
 
 
-def expected_views(pages: list[Page], themes: list[Theme]) -> list[tuple[str, str, list[str]]]:
+RECENT_ITEMS = 10  # recent.qmd `max-items`: Recent shows only the newest pages
+
+SORTS = {"title": by_title, "newest": newest_first}  # data/types.yml `sort` values
+
+
+def expected_views(
+    pages: list[Page], themes: list[Theme], types: list[PageType]
+) -> list[tuple[str, str, list[str]]]:
     """Every (view page, listing id, expected pages in order)."""
     views = []
-    for type_, folder in TYPE_VIEWS.items():
-        order = by_title if type_ in ALPHABETICAL_TYPES else newest_first
-        views.append((f"{folder}/index.html", folder, order([p for p in pages if p.type == type_])))
-    views.append(("recent.html", "recent", newest_first(pages)))
+    for t in types:  # each Type view is its folder's index page, listing id = folder
+        of_type = [p for p in pages if p.type == t.type]
+        views.append((f"{t.folder}/index.html", t.folder, SORTS[t.sort](of_type)))
+    views.append(("recent.html", "recent", newest_first(pages)[:RECENT_ITEMS]))
     of_theme = {t.slug: by_title([p for p in pages if p.theme == t.slug]) for t in themes}
     views += [(f"themes/{t.slug}.html", "theme", of_theme[t.slug]) for t in themes]
     views += [("path.html", f"path-{t.slug}", of_theme[t.slug]) for t in themes]
@@ -118,11 +112,15 @@ def compare(view: str, listing: str, expected: list[str], got: list[str]) -> lis
 
 
 def check_path_order(rendered: dict[str, list[str]], themes: list[Theme]) -> list[str]:
-    """The Path view's theme sections appear in path order (data/themes.yml)."""
-    wanted = [f"path-{t.slug}" for t in themes]
+    """The Path view's theme sections appear in path order (by stage, stageless last)."""
+    wanted = [f"path-{t.slug}" for t in path_order(themes)]
     got = [i for i in rendered if i in wanted]
-    if got != [i for i in wanted if i in got]:
-        return [f"path.html: theme sections are out of path order: got {', '.join(got)}"]
+    expected = [i for i in wanted if i in got]
+    if got != expected:
+        return [
+            "path.html: theme sections are out of path order: "
+            f"expected {', '.join(expected)}; got {', '.join(got)}"
+        ]
     return []
 
 
@@ -131,7 +129,7 @@ def check(root: Path, site: Path, themes_file: Path = THEMES_FILE) -> list[str]:
     themes = load_themes(themes_file)
     errors: list[str] = []
     rendered: dict[str, dict[str, list[str]] | None] = {}
-    for view, listing, expected in expected_views(source_pages(root), themes):
+    for view, listing, expected in expected_views(source_pages(root), themes, load_types()):
         if view not in rendered:
             rendered[view] = listings(site, view) if (site / view).exists() else None
             if rendered[view] is None:
