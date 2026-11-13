@@ -1,0 +1,20 @@
+---
+title: "Sample essay: notes on working with a coding agent"
+type: essay
+theme: ai-assisted-engineering
+stage:
+lens: practitioner
+prereqs: []
+maturity: seed
+date: 2026-11-11
+video: "https://www.youtube.com/watch?v=zjkBMFhNj_g"
+---
+
+::: {.callout-note}
+This is a **sample page**. It shows the layout of an essay, including the video
+slot; it is not real content. The embedded video is a public talk used only to
+prove the embed works.
+:::
+
+An essay is a longer piece of my own thinking that doesn't fit one topic.
+Placeholder text goes here.

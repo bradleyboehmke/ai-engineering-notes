@@ -1,0 +1,30 @@
+---
+title: "Sample topic: splitting text into tokens"
+type: topic
+theme: llm-mechanics
+stage: 1
+lens: practitioner
+prereqs: [sample-token]
+maturity: seed
+date: 2026-11-07
+video: ""
+---
+
+::: {.callout-note}
+This is a **sample page**. It is a placeholder that shows the layout of a topic
+page; it is not learning content.
+:::
+
+A topic page explains one concept in my own words, with runnable code. This
+sample splits a sentence on whitespace, a crude stand-in for a real tokenizer.
+
+```{python}
+text = "Models read text as tokens, not words."
+tokens = text.split()
+print(f"{len(tokens)} tokens: {tokens}")
+```
+
+## Leading this
+
+Every topic page ends here, through the Leader lens. See the sample leader page,
+[Sample leader page: budgeting for tokens](sample-leading-tokenization.qmd).

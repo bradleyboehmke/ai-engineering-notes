@@ -56,6 +56,11 @@ A standalone page written through the Leader lens, linked from the topic pages
 it builds on.
 _Avoid_: Leadership track page
 
+**View**:
+A published page that lists other pages, assembled from their metadata:
+Path, Theme, Recent, or Type. Start Here is hand-written, not a view.
+_Avoid_: Index, feed
+
 **Maturity**:
 How finished a published page is: `seed`, `draft`, or `solid`.
 _Avoid_: Status (reserved for stages)

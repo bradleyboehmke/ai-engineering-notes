@@ -1,0 +1,19 @@
+---
+title: "Sample prototype: a contrast prototype"
+type: prototype
+theme: model-apis
+stage: 2
+lens: practitioner
+prereqs: []
+maturity: seed
+date: 2026-11-09
+video: ""
+---
+
+::: {.callout-note}
+This is a **sample page**. It shows the layout of a prototype write-up; it is
+not a real prototype.
+:::
+
+A prototype page describes something built on open data to contrast two
+approaches. Placeholder: what was built, the data used, and what it showed.

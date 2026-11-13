@@ -49,8 +49,13 @@ maturity: draft      # seed, draft, solid
 video: ""            # optional YouTube URL
 ```
 
-Whether Quarto listings can display and sort on these custom fields is
-unverified; it is tracked as an issue and tested during the site skeleton.
+Pages also carry a required `date` (superseded by ADR-0002, which adds it).
+
+~~Whether Quarto listings can display and sort on these custom fields is
+unverified; it is tracked as an issue and tested during the site skeleton.~~
+Superseded by ADR-0002: listings sort and filter on these fields natively; the
+Path and Theme views are generated from `data/themes.yml` because listings
+can't group.
 
 ## Openness and licensing
 

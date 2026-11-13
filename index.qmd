@@ -1,0 +1,43 @@
+---
+title: "Start Here"
+listing:
+  id: themes
+  contents: data/themes.yml
+  type: table
+  sort: stage  # path order: stageless themes (empty stage) last, in file order
+  fields: [stage, title]
+  field-display-names:
+    stage: "Stage"
+    title: "Theme"
+  sort-ui: false
+  filter-ui: false
+---
+
+This site is where I learn AI Engineering in public. I'm a data scientist and
+team lead making the move, and every page here is written in my own words as I
+go. Pages stand alone: start anywhere, and follow the prerequisites linked at
+the top of a page when you need them.
+
+## The path
+
+The **path** is the default order I'm learning in. It is a sequence of
+**stages**, and each stage covers one **theme**: a named area of AI Engineering
+such as evals. Some themes have no stage; I learn them alongside the others.
+Order is a default, not a rule.
+
+To follow it, open the [Path](path.qmd). To see what changed since your last
+visit, open [Recent](recent.qmd). The navbar also has a page per theme and a
+page per type of page (topics, dictionary, essays, prototypes, tools).
+
+## Themes
+
+::: {#themes}
+:::
+
+## Two lenses
+
+Every topic is written through two **lenses**. The **Practitioner** lens is
+doing the engineering: the concept, explained with runnable code. The
+**Leader** lens is leading the people who do it, and each topic page ends with
+a "Leading this" section. Some topics also get a standalone leader page, linked
+from the topic page it builds on.

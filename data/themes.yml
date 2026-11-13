@@ -1,0 +1,33 @@
+# Single source for the theme list. Views, metadata validation, and Start Here
+# read this file; nothing else may hard-code the themes. ROADMAP.md stays the
+# human-readable plan, and the two must agree.
+#
+# Path order comes from `stage`, not file position: staged themes by stage,
+# then themes without a stage. File order only orders the stageless themes
+# (and any that share a stage). Keep the file in path order anyway, for reading.
+# `stage` is blank (null) for themes without a stage.
+
+- slug: llm-mechanics
+  title: LLM mechanics for builders
+  stage: 1
+- slug: model-apis
+  title: Building with model APIs
+  stage: 2
+- slug: evals
+  title: Evals
+  stage: 3
+- slug: context-and-retrieval
+  title: Context engineering and retrieval
+  stage: 4
+- slug: agents
+  title: Agents
+  stage: 5
+- slug: production
+  title: Production
+  stage: 6
+- slug: ai-assisted-engineering
+  title: AI-assisted engineering
+  stage:
+- slug: leading-teams
+  title: Leading AI engineering teams
+  stage:

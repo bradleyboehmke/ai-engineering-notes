@@ -1,0 +1,73 @@
+project:
+  type: website
+  # Render by inclusion: content folders, the views, and Start Here only.
+  # Working folders (learning/, notes/, inbox/, docs/) and root meta docs
+  # (README, MISSION, ROADMAP, GLOSSARY, CLAUDE.md, LICENSE*) are never listed,
+  # so they are never published. Views: the Type views are each content
+  # folder's index page; path.qmd and themes/ are generated (see pre-render).
+  # The content folders here and in the Browse menu below must match
+  # data/types.yml (Quarto can't read it; tests/test_site_skeleton.py checks).
+  render:
+    - index.qmd
+    - topics/
+    - dictionary/
+    - essays/
+    - prototypes/
+    - tools/
+    - recent.qmd
+    - path.qmd
+    - themes/
+  # Generate the Path and Theme views from data/themes.yml (ADR-0002).
+  pre-render: scripts/views.lua
+
+quarto-required: ">=1.11.9"
+
+execute:
+  freeze: auto
+
+website:
+  title: "AI Engineering Notes"
+  site-url: "https://bradleyboehmke.github.io/ai-engineering-notes/"
+  repo-url: "https://github.com/bradleyboehmke/ai-engineering-notes"
+  search: true
+  navbar:
+    left:
+      - href: index.qmd
+        text: Start Here
+      - href: path.qmd
+        text: Path
+      - href: themes/index.qmd
+        text: Themes
+      - href: recent.qmd
+        text: Recent
+      - text: Browse # one entry per type in data/types.yml, in its order
+        menu:
+          - href: topics/index.qmd
+            text: Topics
+          - href: dictionary/index.qmd
+            text: Dictionary
+          - href: essays/index.qmd
+            text: Essays
+          - href: prototypes/index.qmd
+            text: Prototypes
+          - href: tools/index.qmd
+            text: Tools
+    right:
+      - icon: github
+        href: "https://github.com/bradleyboehmke/ai-engineering-notes"
+        aria-label: GitHub
+  page-footer:
+    center: >-
+      Writing is licensed under
+      [CC BY 4.0](https://github.com/bradleyboehmke/ai-engineering-notes/blob/main/LICENSE).
+      Code is licensed under
+      [MIT](https://github.com/bradleyboehmke/ai-engineering-notes/blob/main/LICENSE-CODE).
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    # Shared per-page layout (theme, maturity, leader marker, prereqs, video),
+    # driven by each content page's front matter. See the filter's header.
+    filters:
+      - filters/page-layout.lua
