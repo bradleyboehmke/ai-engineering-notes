@@ -18,8 +18,12 @@ QUARTO := QUARTO_PYTHON=$(abspath $(PYTHON)) quarto
 # render -> link check -> metadata validation -> view check. Metadata
 # validation reads source front matter, so it does not depend on render.
 CHECK_STEPS := render
+CHECK_STEPS += check-metadata
 
-.PHONY: preview render check test venv clean
+# Root the check steps run against (tests point it at temp-dir fixtures).
+ROOT := .
+
+.PHONY: preview render check test venv clean check-metadata
 
 $(PYTHON): requirements.txt
 	python3 -m venv $(VENV)
@@ -40,6 +44,10 @@ check:
 	  $(MAKE) --no-print-directory $$step || exit 1; \
 	done
 	@echo "check: all steps passed ($(CHECK_STEPS))"
+
+# Metadata validation on source front matter (ADR-0001 + data/themes.yml).
+check-metadata: $(PYTHON)
+	$(PYTHON) -m scripts.metadata $(ROOT)
 
 test: $(PYTHON)
 	$(PYTHON) -m pytest
