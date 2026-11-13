@@ -1,7 +1,9 @@
 ---
 title: "Recent"
-# Recent view: every content page as a card, newest first (by `date`).
+# Recent view: the newest content pages as cards, newest first (by `date`).
 # Folder `index` pages are the Type views, not content, so they're excluded.
+# `contents:` must list every folder in data/types.yml (Quarto can't read it).
+# `max-items` must match RECENT_ITEMS in scripts/view_check.py.
 listing:
   id: recent
   contents:
@@ -19,6 +21,7 @@ listing:
     filename: "index.qmd"
   type: grid
   sort: ["date desc", "title"]
+  max-items: 10
   # No description: a card would repeat the page's opening paragraph.
   fields: [date, title]
   sort-ui: false

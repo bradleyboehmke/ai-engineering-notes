@@ -1,0 +1,35 @@
+# Single source for the page types. Each type has one content folder, whose
+# `index` page is that type's Type view. Metadata validation, the view check,
+# the views generator, the page layout, and the tests read this file.
+#
+# Quarto config can't read it, so these must be kept in step by hand (a test,
+# tests/test_site_skeleton.py, fails when they drift):
+#   _quarto.yml           `render:` list and the navbar's Browse menu
+#   <folder>/index.qmd    the Type view: `include: type`, `sort`, `contents:`
+#   recent.qmd            `contents:`
+#
+#   type    the `type` value in page front matter
+#   folder  the content folder pages of this type live in
+#   title   the Type view's title and its Browse menu entry
+#   sort    Type view order: `newest` (date, newest first) or `title` (A to Z)
+
+- type: topic
+  folder: topics
+  title: Topics
+  sort: newest
+- type: term
+  folder: dictionary
+  title: Dictionary
+  sort: title
+- type: essay
+  folder: essays
+  title: Essays
+  sort: newest
+- type: prototype
+  folder: prototypes
+  title: Prototypes
+  sort: newest
+- type: tool
+  folder: tools
+  title: Tools
+  sort: newest

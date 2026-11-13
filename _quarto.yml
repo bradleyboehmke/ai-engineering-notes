@@ -5,6 +5,8 @@ project:
   # (README, MISSION, ROADMAP, GLOSSARY, CLAUDE.md, LICENSE*) are never listed,
   # so they are never published. Views: the Type views are each content
   # folder's index page; path.qmd and themes/ are generated (see pre-render).
+  # The content folders here and in the Browse menu below must match
+  # data/types.yml (Quarto can't read it; tests/test_site_skeleton.py checks).
   render:
     - index.qmd
     - topics/
@@ -38,7 +40,7 @@ website:
         text: Themes
       - href: recent.qmd
         text: Recent
-      - text: Browse
+      - text: Browse # one entry per type in data/types.yml, in its order
         menu:
           - href: topics/index.qmd
             text: Topics

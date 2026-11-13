@@ -9,11 +9,12 @@
 --   .page-prereqs    one <a class="prereq" data-prereq="<slug>"> per prereq
 -- and, when `video` is set, a `<div class="page-video">` embed after it.
 
-local CONTENT_FOLDERS = { "topics", "dictionary", "essays", "prototypes", "tools" }
-
 local function project_dir()
   return (quarto.project and quarto.project.directory) or "."
 end
+
+-- Data files (themes, page types), shared with scripts/views.lua.
+local data = dofile(project_dir() .. "/scripts/site_data.lua")(project_dir())
 
 local function read_file(path)
   local f = io.open(path, "r")
@@ -23,20 +24,10 @@ local function read_file(path)
   return text
 end
 
--- data/themes.yml is a YAML list; parse it with pandoc by wrapping it as
--- front matter under a `themes` key. Returns { [slug] = {title=, stage=} }.
-local function load_themes()
-  local text = read_file(project_dir() .. "/data/themes.yml")
-  if not text then error("page-layout: cannot read data/themes.yml") end
-  local indented = text:gsub("([^\n]*)", "  %1")
-  local doc = pandoc.read("---\nthemes:\n" .. indented .. "\n---\n", "markdown")
+-- { [slug] = theme } from data/themes.yml.
+local function themes_by_slug()
   local themes = {}
-  for _, t in ipairs(doc.meta.themes) do
-    themes[pandoc.utils.stringify(t.slug)] = {
-      title = pandoc.utils.stringify(t.title),
-      stage = t.stage and pandoc.utils.stringify(t.stage) or "",
-    }
-  end
+  for _, t in ipairs(data.themes()) do themes[t.slug] = t end
   return themes
 end
 
@@ -58,29 +49,50 @@ local function list(meta, key)
   return out
 end
 
--- Find the page whose file stem is `slug` in any content folder. Returns its
--- project-absolute .qmd/.md path (Quarto rewrites it to a relative .html link)
--- and its title, or nil when no such page exists.
-local function find_page(slug)
-  for _, folder in ipairs(CONTENT_FOLDERS) do
-    for _, ext in ipairs({ ".qmd", ".md" }) do
-      local rel = folder .. "/" .. slug .. ext
-      local text = read_file(project_dir() .. "/" .. rel)
-      if text then
-        local doc = pandoc.read(text, "markdown")
-        local title = str(doc.meta, "title")
-        return "/" .. rel, (title ~= "" and title or slug)
+-- Content pages by slug (file stem): { [slug] = { rel paths } }. Walks every
+-- content folder, subfolders included, skipping folder `index` pages (views):
+-- the same pages scripts/metadata.py validates prereqs against.
+local slug_index
+local function content_slugs()
+  if slug_index then return slug_index end
+  slug_index = {}
+  local function walk(rel)
+    local ok, names = pcall(pandoc.system.list_directory, project_dir() .. "/" .. rel)
+    if not ok then return end
+    table.sort(names)
+    for _, name in ipairs(names) do
+      local path = rel .. "/" .. name
+      local stem = name:match("^(.+)%.q?md$")
+      if stem and stem ~= "index" then
+        slug_index[stem] = slug_index[stem] or {}
+        table.insert(slug_index[stem], path)
+      elseif not stem then
+        walk(path)
       end
     end
   end
-  return nil
+  for _, folder in ipairs(data.content_folders()) do walk(folder) end
+  return slug_index
+end
+
+-- The one content page whose slug is `slug`: its project-absolute .qmd/.md
+-- path (Quarto rewrites it to a relative .html link) and its title. nil when
+-- no page, or more than one, has that slug (metadata validation names which).
+local function find_page(slug)
+  local paths = content_slugs()[slug]
+  if not paths or #paths ~= 1 then return nil end
+  local doc = pandoc.read(read_file(project_dir() .. "/" .. paths[1]), "markdown")
+  local title = str(doc.meta, "title")
+  return "/" .. paths[1], (title ~= "" and title or slug)
 end
 
 local function prereq_link(slug)
   local href, title = find_page(slug)
   if not href then
-    -- Left dangling on purpose so the prereq link checker reports it.
-    href, title = slug .. ".html", slug
+    -- Left dangling on purpose so the prereq link checker reports it. Quarto
+    -- never publishes `_`-prefixed folders, so this can't resolve by accident
+    -- (a bare `<slug>.html` could: `index.html`, or a same-folder namesake).
+    href, title = "_prereq-not-found/" .. slug .. ".html", slug
   end
   return pandoc.Link(title, href, "", { class = "prereq", ["data-prereq"] = slug })
 end
@@ -104,11 +116,11 @@ function Pandoc(doc)
   local meta = doc.meta
   if str(meta, "type") == "" then return nil end
 
-  local themes = load_themes()
   local slug = str(meta, "theme")
-  local theme = themes[slug] or { title = slug, stage = "" }
+  local theme = themes_by_slug()[slug] or { title = slug } -- no stage
   local label = "Theme: " .. theme.title
-  if theme.stage ~= "" then label = label .. " (Stage " .. theme.stage .. ")" end
+  local stage = data.stage_label(theme)
+  if stage then label = label .. " (" .. stage .. ")" end
 
   local maturity = str(meta, "maturity")
   local parts = {

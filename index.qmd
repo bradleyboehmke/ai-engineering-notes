@@ -4,7 +4,7 @@ listing:
   id: themes
   contents: data/themes.yml
   type: table
-  sort: false
+  sort: stage  # path order: stageless themes (empty stage) last, in file order
   fields: [stage, title]
   field-display-names:
     stage: "Stage"

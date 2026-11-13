@@ -31,6 +31,14 @@ FIXTURES = {
     "topics/bad-prereq.qmd": page(
         "Bad prereq", extra="prereqs: [sample-tokenization, no-such-prereq]\n"
     ),
+    # Prereqs resolve like metadata validation: any content page, subfolders
+    # included; never a folder index view; never a slug two pages share.
+    "essays/deeper/nested-page.qmd": page("Nested page"),
+    "topics/nested-prereq.qmd": page("Nested prereq", extra="prereqs: [nested-page]\n"),
+    "topics/index-prereq.qmd": page("Index prereq", extra="prereqs: [index]\n"),
+    "topics/dup.qmd": page("Dup topic"),
+    "tools/dup.qmd": page("Dup tool"),
+    "topics/dup-prereq.qmd": page("Dup prereq", extra="prereqs: [dup]\n"),
 }
 
 
@@ -74,13 +82,27 @@ def test_prereq_naming_a_missing_page_fails(failures):
     ]
 
 
+def test_prereq_in_a_subfolder_links_to_it(broken_site, failures):
+    html = (broken_site / "topics/nested-prereq.html").read_text()
+    assert 'href="../essays/deeper/nested-page.html"' in html
+    assert not any(f.startswith("topics/nested-prereq.html") for f in failures)
+
+
+def test_prereq_naming_a_folder_index_view_fails(failures):
+    assert 'topics/index-prereq.html: prereq "index" names no page' in failures
+
+
+def test_prereq_naming_a_slug_two_pages_share_fails(failures):
+    assert 'topics/dup-prereq.html: prereq "dup" names no page' in failures
+
+
 def test_external_links_are_ignored(failures):
     assert not any(f.startswith("topics/external.html") for f in failures)
 
 
 def test_each_broken_fixture_is_the_only_failure(failures):
     """The rest of the site (samples, views, nav) has no broken links."""
-    broken = {"bad-link", "bad-anchor", "bad-xref", "bad-prereq"}
+    broken = {"bad-link", "bad-anchor", "bad-xref", "bad-prereq", "index-prereq", "dup-prereq"}
     assert {f.split(":")[0] for f in failures} == {f"topics/{b}.html" for b in broken}
 
 
@@ -98,9 +120,9 @@ def test_make_check_runs_link_check_and_fails_on_broken_link(broken_site):
     assert 'topics/bad-link.html: link "no-such-page.qmd" resolves to no file' in result.stderr
 
 
-def test_link_check_runs_right_after_render_in_make_check():
+def test_make_check_validates_metadata_before_render_then_checks_links_and_views():
     dry_run = subprocess.run(
         ["make", "-n", "check"], cwd=REPO, capture_output=True, text=True, check=True
     )
     steps = re.search(r"for step in (.*?);", dry_run.stdout).group(1).split()
-    assert steps[:2] == ["render", "check-links"]
+    assert steps == ["check-metadata", "render", "check-links", "check-views"]
