@@ -19,7 +19,8 @@ listing:
     filename: "index.qmd"
   type: grid
   sort: ["date desc", "title"]
-  fields: [date, title, description]
+  # No description: a card would repeat the page's opening paragraph.
+  fields: [date, title]
   sort-ui: false
   filter-ui: false
 ---
