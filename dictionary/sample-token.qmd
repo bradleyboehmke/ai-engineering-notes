@@ -1,0 +1,31 @@
+---
+title: "Sample term: token"
+type: term
+theme: llm-mechanics
+stage: 1
+lens: practitioner
+prereqs: []
+maturity: seed
+video: ""
+---
+
+::: {.callout-note}
+This is a **sample page**. It shows the structure every term follows; it is not
+a real dictionary entry.
+:::
+
+## Definition
+
+A placeholder definition: the unit of text a model reads and writes.
+
+## Related terms
+
+Placeholder: links to related terms go here.
+
+## What to avoid
+
+Placeholder: words not to use in place of this term go here.
+
+## Usage example
+
+"Placeholder sentence that uses the term the way this site does."

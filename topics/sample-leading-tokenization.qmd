@@ -1,0 +1,22 @@
+---
+title: "Sample leader page: budgeting for tokens"
+type: topic
+theme: llm-mechanics
+stage: 1
+lens: leader
+prereqs: [sample-tokenization]
+maturity: seed
+video: ""
+---
+
+::: {.callout-note}
+This is a **sample page**. It shows the layout of a leader page; it is not
+learning content.
+:::
+
+A leader page is written through the Leader lens: leading the people who do the
+engineering. It builds on a topic page, linked above as a prerequisite.
+
+## What to ask the team
+
+Placeholder: the questions a lead would ask about this topic.

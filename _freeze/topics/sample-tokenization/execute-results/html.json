@@ -1,0 +1,12 @@
+{
+  "hash": "be6ea4f3e5e013a4ec2ddc4520197e96",
+  "result": {
+    "engine": "jupyter",
+    "markdown": "---\ntitle: \"Sample topic: splitting text into tokens\"\ntype: topic\ntheme: llm-mechanics\nstage: 1\nlens: practitioner\nprereqs: [sample-token]\nmaturity: seed\nvideo: \"\"\n---\n\n::: {.callout-note}\nThis is a **sample page**. It is a placeholder that shows the layout of a topic\npage; it is not learning content.\n:::\n\nA topic page explains one concept in my own words, with runnable code. This\nsample splits a sentence on whitespace, a crude stand-in for a real tokenizer.\n\n::: {#5c54d8d6 .cell execution_count=1}\n``` {.python .cell-code}\ntext = \"Models read text as tokens, not words.\"\ntokens = text.split()\nprint(f\"{len(tokens)} tokens: {tokens}\")\n```\n\n::: {.cell-output .cell-output-stdout}\n```\n7 tokens: ['Models', 'read', 'text', 'as', 'tokens,', 'not', 'words.']\n```\n:::\n:::\n\n\n## Leading this\n\nEvery topic page ends here, through the Leader lens. See the sample leader page,\n[Sample leader page: budgeting for tokens](sample-leading-tokenization.qmd).\n\n",
+    "supporting": [
+      "sample-tokenization_files"
+    ],
+    "filters": [],
+    "includes": {}
+  }
+}
