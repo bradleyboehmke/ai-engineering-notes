@@ -1,0 +1,8 @@
+# Python pinned once: code execution in pages (via Jupyter) and the check
+# scripts in scripts/ with their tests in tests/.
+ipykernel==7.4.0
+jupyter_client==8.10.0
+nbclient==0.11.0
+nbformat==5.11.1
+PyYAML==6.0.3
+pytest==9.2.0

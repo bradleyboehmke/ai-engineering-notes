@@ -21,3 +21,5 @@ __pycache__/
 
 # Scratch
 .scratch/
+
+**/*.quarto_ipynb
