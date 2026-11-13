@@ -1,0 +1,26 @@
+---
+title: "Recent"
+# Recent view: every content page as a card, newest first (by `date`).
+# Folder `index` pages are the Type views, not content, so they're excluded.
+listing:
+  id: recent
+  contents:
+    - "topics/*.qmd"
+    - "topics/*.md"
+    - "dictionary/*.qmd"
+    - "dictionary/*.md"
+    - "essays/*.qmd"
+    - "essays/*.md"
+    - "prototypes/*.qmd"
+    - "prototypes/*.md"
+    - "tools/*.qmd"
+    - "tools/*.md"
+  exclude:
+    filename: "index.qmd"
+  type: grid
+  sort: ["date desc", "title"]
+  # No description: a card would repeat the page's opening paragraph.
+  fields: [date, title]
+  sort-ui: false
+  filter-ui: false
+---

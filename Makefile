@@ -20,11 +20,12 @@ QUARTO := QUARTO_PYTHON=$(abspath $(PYTHON)) quarto
 CHECK_STEPS := render
 CHECK_STEPS += check-links
 CHECK_STEPS += check-metadata
+CHECK_STEPS += check-views
 
 # Root the check steps run against (tests point it at temp-dir fixtures).
 ROOT := .
 
-.PHONY: preview render check test venv clean check-links check-metadata
+.PHONY: preview render check test venv clean check-links check-metadata check-views
 
 $(PYTHON): requirements.txt
 	python3 -m venv $(VENV)
@@ -54,6 +55,10 @@ check-links: $(PYTHON)
 # Metadata validation on source front matter (ADR-0001 + data/themes.yml).
 check-metadata: $(PYTHON)
 	$(PYTHON) -m scripts.metadata $(ROOT)
+
+# View check on the rendered site: each view lists the expected pages, in order.
+check-views: $(PYTHON)
+	$(PYTHON) -m scripts.view_check $(ROOT)
 
 test: $(PYTHON)
 	$(PYTHON) -m pytest

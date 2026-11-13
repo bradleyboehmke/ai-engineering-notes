@@ -3,7 +3,8 @@ project:
   # Render by inclusion: content folders, the views, and Start Here only.
   # Working folders (learning/, notes/, inbox/, docs/) and root meta docs
   # (README, MISSION, ROADMAP, GLOSSARY, CLAUDE.md, LICENSE*) are never listed,
-  # so they are never published. Add the views here as they arrive.
+  # so they are never published. Views: the Type views are each content
+  # folder's index page; path.qmd and themes/ are generated (see pre-render).
   render:
     - index.qmd
     - topics/
@@ -11,6 +12,11 @@ project:
     - essays/
     - prototypes/
     - tools/
+    - recent.qmd
+    - path.qmd
+    - themes/
+  # Generate the Path and Theme views from data/themes.yml (ADR-0002).
+  pre-render: scripts/views.lua
 
 quarto-required: ">=1.11.9"
 
@@ -26,6 +32,24 @@ website:
     left:
       - href: index.qmd
         text: Start Here
+      - href: path.qmd
+        text: Path
+      - href: themes/index.qmd
+        text: Themes
+      - href: recent.qmd
+        text: Recent
+      - text: Browse
+        menu:
+          - href: topics/index.qmd
+            text: Topics
+          - href: dictionary/index.qmd
+            text: Dictionary
+          - href: essays/index.qmd
+            text: Essays
+          - href: prototypes/index.qmd
+            text: Prototypes
+          - href: tools/index.qmd
+            text: Tools
     right:
       - icon: github
         href: "https://github.com/bradleyboehmke/ai-engineering-notes"

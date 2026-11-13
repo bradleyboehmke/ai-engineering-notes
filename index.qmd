@@ -25,6 +25,10 @@ The **path** is the default order I'm learning in. It is a sequence of
 such as evals. Some themes have no stage; I learn them alongside the others.
 Order is a default, not a rule.
 
+To follow it, open the [Path](path.qmd). To see what changed since your last
+visit, open [Recent](recent.qmd). The navbar also has a page per theme and a
+page per type of page (topics, dictionary, essays, prototypes, tools).
+
 ## Themes
 
 ::: {#themes}

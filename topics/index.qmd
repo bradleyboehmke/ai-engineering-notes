@@ -1,0 +1,27 @@
+---
+title: "Topics"
+# Type view: every page whose `type` is `topic`, newest first.
+listing:
+  id: topics
+  contents:
+    - "../topics/*.qmd"
+    - "../topics/*.md"
+    - "../dictionary/*.qmd"
+    - "../dictionary/*.md"
+    - "../essays/*.qmd"
+    - "../essays/*.md"
+    - "../prototypes/*.qmd"
+    - "../prototypes/*.md"
+    - "../tools/*.qmd"
+    - "../tools/*.md"
+  include:
+    type: topic
+  type: table
+  sort: ["date desc", "title"]
+  fields: [date, title, theme, lens, maturity]
+  field-display-names:
+    theme: "Theme"
+    maturity: "Maturity"
+    lens: "Lens"
+  sort-ui: false
+---
