@@ -41,3 +41,7 @@ format:
   html:
     theme: cosmo
     toc: true
+    # Shared per-page layout (theme, maturity, leader marker, prereqs, video),
+    # driven by each content page's front matter. See the filter's header.
+    filters:
+      - filters/page-layout.lua

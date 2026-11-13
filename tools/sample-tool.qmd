@@ -1,0 +1,18 @@
+---
+title: "Sample tool: a tool built for this repo"
+type: tool
+theme: llm-mechanics
+stage: 1
+lens: practitioner
+prereqs: []
+maturity: seed
+video: ""
+---
+
+::: {.callout-note}
+This is a **sample page**. It shows the layout of a tool page; it is not a real
+tool.
+:::
+
+A tool page documents a tool built for this repo during a stage. Placeholder:
+what the tool does, how to run it, and what it taught me.
