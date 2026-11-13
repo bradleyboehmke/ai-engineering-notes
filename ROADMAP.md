@@ -43,7 +43,8 @@ theme, not to `leading-teams`.
 
 ## Before Stage 1: site skeleton
 
-A live site skeleton on GitHub Pages: one sample page of each type; the Path,
+A live site skeleton on GitHub Pages
+(<https://bradleyboehmke.github.io/ai-engineering-notes/>): one sample page of each type; the Path,
 Theme, Recent, and Type views working from metadata; a link checker in CI; and
 a Start Here page. Out of scope: the auto-linker, the radar, `/define`,
 `/review`, and real learning content beyond the sample pages.

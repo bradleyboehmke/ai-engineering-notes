@@ -1,4 +1,4 @@
-# AI Engineering Notes: local commands. CI runs the same `make check`.
+# AI Engineering Notes: local commands. CI runs `make check` and `make test`.
 #
 #   make preview   live local preview while writing
 #   make render    render the site into _site/
