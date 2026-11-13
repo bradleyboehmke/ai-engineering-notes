@@ -7,6 +7,7 @@ all failures are reported in one run.
     python -m scripts.metadata [ROOT]   # exits 1 on any failure
 """
 
+import datetime
 import sys
 from pathlib import Path
 
@@ -16,7 +17,9 @@ from scripts.themes import THEMES_FILE, load_themes
 
 CONTENT_FOLDERS = ["topics", "dictionary", "essays", "prototypes", "tools"]
 PAGE_SUFFIXES = {".qmd", ".md"}
-REQUIRED = ["title", "type", "theme", "maturity"]
+# `date` is required because the Recent view sorts on it: Quarto lists an
+# undated page as the newest, so a missing date would silently misorder it.
+REQUIRED = ["title", "type", "theme", "maturity", "date"]
 ALLOWED = {
     "type": ["topic", "term", "essay", "prototype", "tool"],
     "lens": ["practitioner", "leader"],  # absent means practitioner
@@ -70,6 +73,21 @@ def check_stage(meta: dict, theme: str, expected: int | None) -> list[str]:
     return []
 
 
+def page_date(meta: dict) -> datetime.date | None:
+    """The page's `date` as a calendar date, or None if it isn't one."""
+    value = meta.get("date")
+    if isinstance(value, datetime.datetime):
+        return value.date()
+    if isinstance(value, datetime.date):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.date.fromisoformat(value)
+        except ValueError:
+            return None
+    return None
+
+
 def check_page(meta: dict, stages: dict[str, int | None]) -> list[str]:
     """Rules broken by one page's front matter, in a stable order."""
     errors = [f'required field "{f}" is missing' for f in REQUIRED if f not in meta]
@@ -84,6 +102,8 @@ def check_page(meta: dict, stages: dict[str, int | None]) -> list[str]:
             errors.append(f'theme "{theme}" is not a known theme slug (see data/themes.yml)')
     if "prereqs" in meta and not isinstance(meta["prereqs"], list):
         errors.append("prereqs must be a list")
+    if "date" in meta and page_date(meta) is None:
+        errors.append("date must be a YYYY-MM-DD date")
     if "video" in meta and not isinstance(meta["video"], str):
         errors.append("video must be a string")
     return errors

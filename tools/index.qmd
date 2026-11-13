@@ -1,0 +1,26 @@
+---
+title: "Tools"
+# Type view: every page whose `type` is `tool`, newest first.
+listing:
+  id: tools
+  contents:
+    - "../topics/*.qmd"
+    - "../topics/*.md"
+    - "../dictionary/*.qmd"
+    - "../dictionary/*.md"
+    - "../essays/*.qmd"
+    - "../essays/*.md"
+    - "../prototypes/*.qmd"
+    - "../prototypes/*.md"
+    - "../tools/*.qmd"
+    - "../tools/*.md"
+  include:
+    type: tool
+  type: table
+  sort: ["date desc", "title"]
+  fields: [date, title, theme, maturity]
+  field-display-names:
+    theme: "Theme"
+    maturity: "Maturity"
+  sort-ui: false
+---

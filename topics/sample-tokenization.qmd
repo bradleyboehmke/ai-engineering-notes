@@ -6,6 +6,7 @@ stage: 1
 lens: practitioner
 prereqs: [sample-token]
 maturity: seed
+date: 2026-11-07
 video: ""
 ---
 

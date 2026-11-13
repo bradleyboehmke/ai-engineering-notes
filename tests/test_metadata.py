@@ -1,5 +1,6 @@
 """Metadata validation on source front matter (#6), rules from ADR-0001."""
 
+import datetime
 import subprocess
 from pathlib import Path
 
@@ -15,6 +16,7 @@ VALID = {
     "theme": "evals",
     "stage": 3,
     "maturity": "seed",
+    "date": datetime.date(2026, 11, 13),
 }
 
 
@@ -36,7 +38,7 @@ def without(key: str) -> dict:
     return {k: v for k, v in VALID.items() if k != key}
 
 
-@pytest.mark.parametrize("field", ["title", "type", "theme", "maturity"])
+@pytest.mark.parametrize("field", ["title", "type", "theme", "maturity", "date"])
 def test_missing_required_field_fails(tmp_path, field):
     write_page(tmp_path, "topics/judge.qmd", without(field))
     assert validate(tmp_path) == [
@@ -117,6 +119,12 @@ def test_prereqs_that_is_not_a_list_fails(tmp_path):
 def test_video_that_is_not_a_string_fails(tmp_path):
     write_page(tmp_path, "topics/judge.qmd", {**VALID, "video": 42})
     assert validate(tmp_path) == ["topics/judge.qmd: video must be a string"]
+
+
+@pytest.mark.parametrize("date", ["2026-11-31", "last week", 20261113])
+def test_date_that_is_not_a_calendar_date_fails(tmp_path, date):
+    write_page(tmp_path, "topics/judge.qmd", {**VALID, "date": date})
+    assert validate(tmp_path) == ["topics/judge.qmd: date must be a YYYY-MM-DD date"]
 
 
 def test_optional_fields_of_the_right_shape_pass(tmp_path):

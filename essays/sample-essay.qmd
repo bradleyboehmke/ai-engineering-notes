@@ -6,6 +6,7 @@ stage:
 lens: practitioner
 prereqs: []
 maturity: seed
+date: 2026-11-11
 video: "https://www.youtube.com/watch?v=zjkBMFhNj_g"
 ---
 
