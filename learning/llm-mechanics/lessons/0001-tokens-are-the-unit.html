@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 1 · Tokens are the unit of everything</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main>
+
+<header class="lesson-head">
+  <div class="kicker">LLM mechanics · Lesson 1 of 16 · Block A: Text in, text out · ~30 min</div>
+  <h1>Tokens are the unit of everything</h1>
+  <p class="win"><strong>Win:</strong> by the end you can estimate how many tokens a document is, and say why non-English text, code, and numbers cost more than the rule of thumb suggests.</p>
+</header>
+
+<p>Your mission starts with estimating what an LLM feature costs before anyone builds it. Every one of those estimates is denominated in a single unit, and it isn't words.</p>
+
+<h2>1. The model never sees your text</h2>
+
+<p>Before a model reads anything, a <em>tokenizer</em> converts the text into a sequence of integers. Each integer is a <em>token</em>: an ID in a fixed vocabulary of text pieces. Most modern tokenizers use byte pair encoding (BPE), which is lossless and reversible, and keeps common subwords intact.<a class="cite" href="#s1">1</a> Here is a real sentence through OpenAI's <code>o200k_base</code> tokenizer:</p>
+
+<div class="tokens"><span>The</span><span> quarterly</span><span> revenue</span><span> increased</span><span> by</span><span> twelve</span><span> percent</span><span> compared</span><span> to</span><span> last</span><span> year</span><span>.</span></div>
+
+<p>That's 12 tokens. The model receives <code>[976, 69611, 17981, 11202, …]</code>, not the words. Notice the leading spaces: <code>" hello"</code> and <code>"hello"</code> are different tokens with different IDs. A less common word gets split into pieces:</p>
+
+<div class="tokens"><span>heter</span><span>os</span><span>ced</span><span>astic</span><span>ity</span></div>
+
+<div class="aside">
+  <span class="label">ML anchor</span>
+  The vocabulary is a fixed set of classes. <code>o200k_base</code> has 200,019 of them; the older <code>cl100k_base</code> has 100,277. Generating text is classification over that set, one token at a time. That's lesson 2.
+</div>
+
+<h2>2. Why a builder cares</h2>
+
+<p>Every limit and price you'll work with is counted in tokens. That includes how much a model can read (the context window), how much it can write (the output limit), what you pay (priced per million input and output tokens), and how long you wait. Get the token count wrong and every downstream estimate is wrong with it.<a class="cite" href="#s6">6</a></p>
+
+<h2>3. The rule of thumb, and where it breaks</h2>
+
+<p>For English, OpenAI gives the standard rule: <strong>1 token ≈ 4 characters ≈ ¾ of a word</strong>, so 100 tokens ≈ 75 words. It also says plainly that this is an approximation, and that other languages behave differently.<a class="cite" href="#s3">3</a></p>
+
+<p>Measured cases show where it holds and where it fails:</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Text</th><th class="num">Words</th><th class="num">Tokens (o200k)</th><th class="num">Tokens (cl100k)</th><th>What happened</th></tr></thead>
+  <tbody>
+    <tr><td>English revenue sentence</td><td class="num">11</td><td class="num">12</td><td class="num">12</td><td>Close to the rule: common words are one token each</td></tr>
+    <tr><td><code>heteroscedasticity</code></td><td class="num">1</td><td class="num">5</td><td class="num">6</td><td>Rare words split into pieces</td></tr>
+    <tr><td><code>Revenue was 1234567.89 dollars.</code></td><td class="num">4</td><td class="num">10</td><td class="num">10</td><td>Numbers split into chunks: <code>123</code> <code>456</code> <code>7</code> <code>.</code> <code>89</code></td></tr>
+    <tr><td>3-line Python function</td><td class="num">6</td><td class="num">13</td><td class="num">13</td><td>Punctuation, indentation, and newlines are tokens too</td></tr>
+    <tr><td>Same sentence, Spanish</td><td class="num">14</td><td class="num">18</td><td class="num">22</td><td>More tokens for the same meaning</td></tr>
+    <tr><td>Same sentence, Japanese</td><td class="num">n/a</td><td class="num">19</td><td class="num">25</td><td>No spaces, so word counts don't apply</td></tr>
+    <tr><td>Same sentence, Hindi</td><td class="num">13</td><td class="num">20</td><td class="num">66</td><td>The older tokenizer needs 5.5× the English count</td></tr>
+  </tbody>
+  <caption>Measured with tiktoken on 2026-11-14. The same meaning costs 12 tokens in English and 66 in Hindi on the older tokenizer.</caption>
+</table>
+</div>
+
+<p>The multilingual gap is well documented. Across 17 tokenizers, the same text translated into different languages varied in length by up to 15×. That affects cost, latency, and how much fits in context.<a class="cite" href="#s4">4</a> Tokens also explain some well-known model failures, such as trouble spelling, reversing strings, and simple arithmetic. The model sees <code>heter</code>+<code>os</code>+…, never the individual letters.<a class="cite" href="#s2">2</a></p>
+
+<h2>4. Every provider counts differently</h2>
+
+<p>The two OpenAI tokenizers above disagree on the same text. Providers differ too. Anthropic's documented way to count Claude tokens is its token-counting API endpoint, which takes a full message and returns an estimate of the input tokens.<a class="cite" href="#s5">5</a> So a tiktoken count is exact for the OpenAI model it matches, and only an approximation for anyone else's model.</p>
+
+<p>A plain-text count also leaves out request overhead: message structure, tool definitions, images, and files all add tokens.<a class="cite" href="#s3">3</a> That's lesson 10.</p>
+
+<h2>5. Check yourself</h2>
+<p>Answer from memory, without scrolling up. Retrieval is what makes this stick.</p>
+
+<div class="quiz">
+  <div class="quiz-q">
+    <p class="stem">A teammate budgets a 3,000-word English report as 3,000 tokens. What's the better estimate?</p>
+    <button class="opt" data-correct>About 4,000 tokens</button>
+    <button class="opt">About 3,000 tokens</button>
+    <button class="opt">About 750 tokens</button>
+    <button class="opt">About 12,000 tokens</button>
+    <p class="why">100 tokens ≈ 75 words, so 3,000 words ≈ 4,000 tokens. 12,000 comes from applying the 4-characters rule to words instead of characters.</p>
+  </div>
+  <div class="quiz-q">
+    <p class="stem">Why does a model struggle to count the letters in "heteroscedasticity"?</p>
+    <button class="opt" data-correct>It sees subword pieces, not letters</button>
+    <button class="opt">Its context window is too short</button>
+    <button class="opt">Temperature randomizes counting answers too much</button>
+    <button class="opt">Rare words are removed before processing</button>
+    <p class="why">The input is five tokens (heter, os, ced, astic, ity). The letters were never presented as separate units.</p>
+  </div>
+  <div class="quiz-q">
+    <p class="stem">You serve the same feature in English and Hindi. Which is most likely true?</p>
+    <button class="opt" data-correct>Hindi requests usually cost more tokens</button>
+    <button class="opt">Both languages cost exactly equal tokens</button>
+    <button class="opt">English requests usually cost more tokens</button>
+    <button class="opt">Cost depends only on character count</button>
+    <p class="why">The same meaning took 20 to 66 tokens in Hindi versus 12 in English. Tokenizers are trained mostly on English-heavy data.</p>
+  </div>
+  <div class="quiz-q">
+    <p class="stem">You count a prompt with tiktoken. How should you use that number for a Claude bill?</p>
+    <button class="opt" data-correct>As an estimate, because tokenizers differ</button>
+    <button class="opt">Exactly, because all providers share tokenizers</button>
+    <button class="opt">Multiplied by four, to get characters</button>
+    <button class="opt">Not at all; Claude bills words</button>
+    <p class="why">tiktoken matches OpenAI's tokenizers. For Claude, use Anthropic's token-counting endpoint, which is itself an estimate.</p>
+  </div>
+  <div class="quiz-q">
+    <p class="stem">Which of these is <em>not</em> measured in tokens?</p>
+    <button class="opt" data-correct>The model's parameter count</button>
+    <button class="opt">The context window limit</button>
+    <button class="opt">The maximum output length</button>
+    <button class="opt">The per-request API price</button>
+    <p class="why">Parameters are model weights. Context, output limits, and price are all counted in tokens.</p>
+  </div>
+  <p class="quiz-score"></p>
+</div>
+
+<h2>6. Experiment: count your own documents (~10 min)</h2>
+
+<div class="box">
+  <span class="label">Do this</span>
+  <ol>
+    <li>Pick three public documents of different kinds: a page of prose (an article or README), a code file, and something with numbers or tables. Optionally add a fourth in another language. Use no work documents.</li>
+    <li>From <code>learning/llm-mechanics/</code>, create a virtual environment (already gitignored):
+<pre><code>python3 -m venv .venv &amp;&amp; .venv/bin/pip install tiktoken</code></pre>
+    Save this as <code>experiments/count.py</code>:
+<pre><code>import sys, tiktoken
+enc = tiktoken.get_encoding("o200k_base")
+for path in sys.argv[1:]:
+    text = open(path, encoding="utf-8").read()
+    n = len(enc.encode(text))
+    print(f"{path}: {n} tokens, {len(text)/n:.1f} chars/token, "
+          f"{len(text.split())/n:.2f} words/token")</code></pre>
+    Then run <code>.venv/bin/python experiments/count.py doc1 doc2 doc3</code>.</li>
+    <li><strong>Before</strong> you run it, write down your guess for each document using the rule of thumb. Then compare.</li>
+    <li>Note which document beat the rule and which broke it, and why. That observation is the start of your dictionary entry.</li>
+  </ol>
+</div>
+
+<h2>Leading this</h2>
+<p>When a teammate's design doc gives sizes in pages or words, ask for tokens. If the product is multilingual, ask for token counts per language, because the budget for a Hindi user isn't the budget for an English one. "Words ÷ 0.75" is fine for a first estimate of English prose. Anything with code, tables, or numbers needs a measured count.</p>
+
+<div class="box">
+  <span class="label">Your turn: draft, don't copy</span>
+  Draft <strong>token</strong> and <strong>tokenizer</strong> in your own words, in <code>dictionary/</code>. Use the sample term page as the template. Questions to answer in your draft:
+  <ul>
+    <li>What is a token, in one sentence, without the word "word"?</li>
+    <li>What's the one thing to avoid saying about tokens? (Your experiment gives you a candidate.)</li>
+    <li>What's a usage example from your own experiment?</li>
+  </ul>
+  Bring the draft back and I'll challenge it.
+</div>
+
+<div class="box">
+  <span class="label">Primary source</span>
+  <a href="https://www.youtube.com/watch?v=zduSFxRajkE">Andrej Karpathy, "Let's build the GPT Tokenizer"</a>. Watch the first ~20 minutes, which cover the tokenization weirdness list. The from-scratch build is optional. For hands-on poking, paste your documents into <a href="https://tiktokenizer.vercel.app">tiktokenizer</a> to see the token boundaries.
+</div>
+
+<p><em>Anything unclear, or that didn't match your experiment? Ask me. I'm your teacher here, and a follow-up question is often worth more than the next lesson.</em></p>
+
+<h3>Sources</h3>
+<ol style="font-size:0.85rem">
+  <li id="s1"><a href="https://github.com/openai/tiktoken">OpenAI, tiktoken README</a>: BPE, lossless and reversible, ~4 bytes per token.</li>
+  <li id="s2"><a href="https://github.com/karpathy/minbpe/blob/master/lecture.md">Karpathy, minbpe lecture notes</a>: tokenization-caused failures (spelling, string reversal, arithmetic, non-English).</li>
+  <li id="s3"><a href="https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them">OpenAI Help, "What are tokens and how to count them"</a>: rules of thumb and request overhead.</li>
+  <li id="s4"><a href="https://arxiv.org/abs/2305.15425">Petrov et al., "Language Model Tokenizers Introduce Unfairness Between Languages" (NeurIPS 2023)</a>: up to 15× length differences across languages.</li>
+  <li id="s5"><a href="https://platform.claude.com/docs/en/build-with-claude/token-counting">Anthropic, Token counting</a>: counting endpoint, estimates.</li>
+  <li id="s6"><a href="https://platform.claude.com/docs/en/about-claude/pricing">Anthropic, Pricing</a>: prices per million input and output tokens.</li>
+</ol>
+
+<footer class="lesson-foot">
+  <nav>
+    <span>Reference: <a href="../reference/tokens.html">Token rules of thumb</a></span>
+    <span>Next: Lesson 2, The generation loop (not yet written)</span>
+  </nav>
+</footer>
+
+</main>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

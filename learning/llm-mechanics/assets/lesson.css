@@ -1,0 +1,109 @@
+/* Shared stylesheet for every lesson and reference doc in this workspace. */
+:root {
+  --bg: #fffff8;
+  --fg: #1f1f1f;
+  --muted: #5f5f5f;
+  --rule: #d9d6c7;
+  --accent: #8a3b12;
+  --code-bg: #f2efe2;
+  --ok: #1f6f43;
+  --ok-bg: #e5f2ea;
+  --bad: #9b1c1c;
+  --bad-bg: #f8e6e6;
+  --callout-bg: #f5f1e3;
+  --measure: 40rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161614;
+    --fg: #e8e6df;
+    --muted: #a3a097;
+    --rule: #3a3833;
+    --accent: #e39b6a;
+    --code-bg: #24231f;
+    --ok: #7fd1a1;
+    --ok-bg: #1b2e23;
+    --bad: #f19a9a;
+    --bad-bg: #331d1d;
+    --callout-bg: #211f1b;
+  }
+}
+
+* { box-sizing: border-box; }
+html { font-size: 18px; }
+body {
+  margin: 0;
+  padding: 3rem 1rem 5rem;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  line-height: 1.6;
+}
+main { max-width: var(--measure); margin: 0 auto; }
+
+header.lesson-head { border-bottom: 1px solid var(--rule); margin-bottom: 2rem; padding-bottom: 1rem; }
+.kicker { font-variant: small-caps; letter-spacing: 0.06em; color: var(--muted); font-size: 0.85rem; }
+h1 { font-weight: 400; font-size: 2rem; line-height: 1.2; margin: 0.3rem 0 0.6rem; }
+h2 { font-weight: 400; font-style: italic; font-size: 1.35rem; margin: 2.4rem 0 0.6rem; }
+h3 { font-weight: 600; font-size: 1rem; margin: 1.6rem 0 0.4rem; }
+.win { font-size: 1.05rem; }
+.win strong { color: var(--accent); font-weight: 600; }
+
+a { color: var(--accent); text-underline-offset: 2px; }
+code, pre { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 0.82rem; }
+code { background: var(--code-bg); padding: 0.05rem 0.25rem; border-radius: 3px; }
+pre { background: var(--code-bg); padding: 0.9rem 1rem; overflow-x: auto; border-radius: 4px; line-height: 1.45; }
+pre code { background: none; padding: 0; }
+
+/* Citations: superscript-style links after a claim. */
+.cite { font-size: 0.72rem; vertical-align: super; line-height: 0; margin-left: 0.1rem; text-decoration: none; }
+.cite::before { content: "["; } .cite::after { content: "]"; }
+
+/* Side note for ML analogies and asides. */
+.aside { border-left: 3px solid var(--accent); background: var(--callout-bg); padding: 0.7rem 1rem; margin: 1.2rem 0; font-size: 0.95rem; }
+.aside .label { font-variant: small-caps; color: var(--accent); letter-spacing: 0.05em; display: block; }
+
+/* Tables */
+.table-wrap { overflow-x: auto; margin: 1rem 0; }
+table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+th, td { text-align: left; padding: 0.35rem 0.6rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 600; border-bottom: 2px solid var(--rule); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+caption { caption-side: bottom; text-align: left; color: var(--muted); font-size: 0.78rem; padding-top: 0.4rem; }
+
+/* Token chips: show how text splits. */
+.tokens { display: flex; flex-wrap: wrap; gap: 3px; margin: 0.8rem 0; font-family: "SF Mono", Menlo, monospace; font-size: 0.8rem; }
+.tokens span { background: var(--code-bg); border: 1px solid var(--rule); border-radius: 3px; padding: 0.05rem 0.3rem; white-space: pre; }
+.tokens span:nth-child(odd) { border-color: var(--accent); }
+
+/* Task / lead / draft boxes */
+.box { border: 1px solid var(--rule); border-radius: 6px; padding: 0.9rem 1.1rem; margin: 1.4rem 0; }
+.box > .label { font-variant: small-caps; letter-spacing: 0.06em; color: var(--muted); display: block; margin-bottom: 0.3rem; }
+.box ol, .box ul { padding-left: 1.2rem; }
+
+/* Quiz (assets/quiz.js) */
+.quiz-q { margin: 1.4rem 0; }
+.quiz-q .stem { font-weight: 600; margin-bottom: 0.5rem; }
+.quiz-q button.opt {
+  display: block; width: 100%; text-align: left; margin: 0.3rem 0; padding: 0.5rem 0.8rem;
+  font: inherit; font-size: 0.95rem; color: var(--fg); background: transparent;
+  border: 1px solid var(--rule); border-radius: 5px; cursor: pointer;
+}
+.quiz-q button.opt:hover:not([disabled]) { border-color: var(--accent); }
+.quiz-q button.opt.correct { background: var(--ok-bg); border-color: var(--ok); }
+.quiz-q button.opt.wrong { background: var(--bad-bg); border-color: var(--bad); }
+.quiz-q button.opt[disabled] { cursor: default; }
+.quiz-q .why { display: none; font-size: 0.9rem; color: var(--muted); margin-top: 0.4rem; }
+.quiz-q.answered .why { display: block; }
+.quiz-score { font-variant: small-caps; color: var(--muted); }
+
+footer.lesson-foot { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule); font-size: 0.85rem; color: var(--muted); }
+footer.lesson-foot nav { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+
+@media print {
+  :root { --bg: #fff; --fg: #000; }
+  body { padding: 0; font-size: 11pt; }
+  .quiz-q button.opt { border: none; padding: 0.1rem 0; }
+  .quiz-q .why { display: block; }
+  a { color: inherit; }
+}

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Token rules of thumb</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main>
+<header class="lesson-head">
+  <div class="kicker">LLM mechanics · Reference</div>
+  <h1>Token rules of thumb</h1>
+  <p>From <a href="../lessons/0001-tokens-are-the-unit.html">Lesson 1</a>. Use it for first estimates, and measure anything that matters.</p>
+</header>
+
+<h2>Estimating</h2>
+<div class="table-wrap"><table>
+  <tbody>
+    <tr><th>English prose</th><td>1 token ≈ 4 characters ≈ ¾ word · 100 tokens ≈ 75 words<a class="cite" href="https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them">OpenAI</a></td></tr>
+    <tr><th>Words → tokens</th><td>tokens ≈ words ÷ 0.75 (English only)</td></tr>
+    <tr><th>Code</th><td>Above the rule: punctuation, indentation, and newlines are tokens</td></tr>
+    <tr><th>Numbers</th><td>Split into chunks (<code>1234567.89</code> → <code>123</code> <code>456</code> <code>7</code> <code>.</code> <code>89</code>)</td></tr>
+    <tr><th>Non-English</th><td>Often far above English for the same meaning: up to 15× across languages<a class="cite" href="https://arxiv.org/abs/2305.15425">Petrov et al.</a></td></tr>
+    <tr><th>Whitespace</th><td><code>"hello"</code> and <code>" hello"</code> are different tokens</td></tr>
+  </tbody>
+</table></div>
+
+<h2>Counting exactly</h2>
+<div class="table-wrap"><table>
+  <tbody>
+    <tr><th>OpenAI models</th><td><code>tiktoken</code>, e.g. <code>tiktoken.encoding_for_model("gpt-4o")</code> → <code>o200k_base</code><a class="cite" href="https://github.com/openai/tiktoken">tiktoken</a></td></tr>
+    <tr><th>Claude models</th><td>Token-counting API endpoint (returns an estimate; free, rate-limited)<a class="cite" href="https://platform.claude.com/docs/en/build-with-claude/token-counting">Anthropic</a></td></tr>
+    <tr><th>Cross-provider</th><td>Counts differ by tokenizer; another provider's count is only an approximation</td></tr>
+    <tr><th>Full request</th><td>Plain-text counts miss overhead: roles, tools, images, files</td></tr>
+  </tbody>
+</table></div>
+
+<h2>Measured (o200k_base, 2026-11-14)</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Same sentence in…</th><th class="num">Tokens (o200k)</th><th class="num">Tokens (cl100k)</th></tr></thead>
+  <tbody>
+    <tr><td>English</td><td class="num">12</td><td class="num">12</td></tr>
+    <tr><td>Spanish</td><td class="num">18</td><td class="num">22</td></tr>
+    <tr><td>Japanese</td><td class="num">19</td><td class="num">25</td></tr>
+    <tr><td>Hindi</td><td class="num">20</td><td class="num">66</td></tr>
+  </tbody>
+</table></div>
+
+<p style="font-size:0.85rem;color:var(--muted)">Your own measurements from the Lesson 1 experiment belong here too. Add a row per document type.</p>
+</main>
+</body>
+</html>
