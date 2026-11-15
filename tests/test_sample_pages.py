@@ -54,7 +54,11 @@ def test_term_page_has_the_term_structure(site):
     html = page(site, "dictionary/sample-token.html")
     html = html[html.index('<main class="content"'):]  # skip the table of contents
     headings = [re.sub(r"<[^>]+>", "", h).strip() for h in re.findall(r"<h2[^>]*>(.*?)</h2>", html)]
-    assert headings == ["Definition", "Related terms", "What to avoid", "Usage example"]
+    assert headings == ["More context", "Usage example", "What to avoid", "Related terms"]
+    # The short definition is a callout with the `definition` class, before the sections.
+    callout = re.search(r'<div class="([^"]*\bdefinition\b[^"]*)"', html)
+    assert callout and "callout" in callout.group(1)
+    assert callout.start() < html.index("<h2")
 
 
 def content(html: str) -> str:
