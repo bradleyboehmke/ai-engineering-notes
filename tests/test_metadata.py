@@ -20,12 +20,16 @@ VALID = {
 }
 
 
+DEFINITION = "::: {.callout-tip .definition title=\"Definition\"}\nShort definition.\n:::\n"
+
+
 def write_page(root: Path, rel: str, meta: dict | None = None, raw: str | None = None) -> None:
     """Write a content page whose front matter is `meta` (as YAML) or `raw` text."""
     path = root / rel
     path.parent.mkdir(parents=True, exist_ok=True)
     if raw is None:
-        raw = "---\n" + yaml.safe_dump(meta, sort_keys=False) + "---\n\nBody.\n"
+        body = DEFINITION if meta.get("type") == "term" else "Body.\n"
+        raw = "---\n" + yaml.safe_dump(meta, sort_keys=False) + "---\n\n" + body
     path.write_text(raw)
 
 
@@ -251,3 +255,39 @@ def test_themes_come_only_from_the_themes_data_file(tmp_path):
     assert validate(tmp_path, themes_file=themes) == [
         'topics/judge.qmd: theme "evals" is not a known theme slug (see data/themes.yml)'
     ]
+
+
+TERM = {**VALID, "type": "term"}
+FRONT = "---\n" + yaml.safe_dump(TERM, sort_keys=False) + "---\n\n"
+
+
+def test_term_with_one_definition_callout_passes(tmp_path):
+    write_page(tmp_path, "dictionary/token.qmd", TERM)
+    assert validate(tmp_path) == []
+
+
+def test_term_without_a_definition_callout_fails(tmp_path):
+    write_page(tmp_path, "dictionary/token.qmd", raw=FRONT + "## More context\n")
+    assert validate(tmp_path) == [
+        "dictionary/token.qmd: a term needs exactly one .definition callout, found 0"
+    ]
+
+
+def test_term_with_two_definition_callouts_fails(tmp_path):
+    write_page(tmp_path, "dictionary/token.qmd", raw=FRONT + DEFINITION + "\n" + DEFINITION)
+    assert validate(tmp_path) == [
+        "dictionary/token.qmd: a term needs exactly one .definition callout, found 2"
+    ]
+
+
+def test_definition_class_in_a_code_block_does_not_count(tmp_path):
+    fenced = "```markdown\n" + DEFINITION + "```\n"
+    write_page(tmp_path, "dictionary/token.qmd", raw=FRONT + fenced)
+    assert validate(tmp_path) == [
+        "dictionary/token.qmd: a term needs exactly one .definition callout, found 0"
+    ]
+
+
+def test_other_types_need_no_definition_callout(tmp_path):
+    write_page(tmp_path, "topics/judge.qmd", VALID)
+    assert validate(tmp_path) == []

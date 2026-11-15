@@ -8,6 +8,7 @@ all failures are reported in one run.
 """
 
 import datetime
+import re
 import sys
 from pathlib import Path
 
@@ -24,6 +25,28 @@ ALLOWED = {  # `type` comes from data/types.yml
     "lens": ["practitioner", "leader"],  # absent means practitioner
     "maturity": ["seed", "draft", "solid"],
 }
+
+
+# A term's short definition is a callout div with the `definition` class, e.g.
+# `::: {.callout-tip .definition title="Definition"}`. Exactly one per term, so
+# other features (Dictionary descriptions, term hovers) can find it.
+DEFINITION_DIV = re.compile(r"^:{3,}\s*\{[^}]*\.definition[\s}]")
+FENCE = re.compile(r"^(`{3,}|~{3,})")
+
+
+def count_definitions(text: str) -> int:
+    """Definition divs in a page's source, ignoring any inside code blocks."""
+    count, fence = 0, None
+    for line in text.splitlines():
+        stripped = line.strip()
+        marker = FENCE.match(stripped)
+        if fence is None and marker:
+            fence = marker.group(1)[0]
+        elif fence is not None and stripped.startswith(fence * 3) and not stripped.strip(fence):
+            fence = None
+        elif fence is None and DEFINITION_DIV.match(stripped):
+            count += 1
+    return count
 
 
 class FrontMatterError(Exception):
@@ -153,9 +176,14 @@ def validate(
     for path in pages:
         rel = path.relative_to(root).as_posix()
         try:
-            problems = check_page(read_front_matter(path), stages, types, slugs)
+            meta = read_front_matter(path)
+            problems = check_page(meta, stages, types, slugs)
         except FrontMatterError as e:
-            problems = [str(e)]
+            meta, problems = {}, [str(e)]
+        if meta.get("type") == "term":
+            found = count_definitions(path.read_text())
+            if found != 1:
+                problems.append(f"a term needs exactly one .definition callout, found {found}")
         errors += [f"{rel}: {p}" for p in problems]
     return errors
 

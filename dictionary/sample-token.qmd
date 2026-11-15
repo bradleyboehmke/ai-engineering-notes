@@ -15,18 +15,22 @@ This is a **sample page**. It shows the structure every term follows; it is not
 a real dictionary entry.
 :::
 
-## Definition
-
+::: {.callout-tip .definition title="Definition"}
 A placeholder definition: the unit of text a model reads and writes.
+:::
+
+## More context
+
+Placeholder: the fuller explanation, with examples, goes here.
+
+## Usage example
+
+Placeholder: the term used in a real task, ideally from an experiment.
+
+## What to avoid
+
+Placeholder: common mistakes and misreadings of the term go here.
 
 ## Related terms
 
 Placeholder: links to related terms go here.
-
-## What to avoid
-
-Placeholder: words not to use in place of this term go here.
-
-## Usage example
-
-"Placeholder sentence that uses the term the way this site does."
