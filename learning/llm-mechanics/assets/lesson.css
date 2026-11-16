@@ -107,3 +107,36 @@ footer.lesson-foot nav { display: flex; justify-content: space-between; gap: 1re
   .quiz-q .why { display: block; }
   a { color: inherit; }
 }
+
+/* Probability distribution bars (assets/stepper.js renderDist, or static markup) */
+.dist { margin: 0.6rem 0; font-size: 0.85rem; }
+.dist-row { display: grid; grid-template-columns: 6.5rem 1fr 3.6rem; align-items: center; gap: 0.6rem; margin: 0.2rem 0; }
+.dist-tok { white-space: pre; justify-self: start; }
+.dist-track { background: var(--code-bg); height: 0.7rem; border-radius: 2px; }
+.dist-bar { background: var(--muted); height: 100%; border-radius: 2px; }
+.dist-row.picked .dist-bar { background: var(--accent); }
+.dist-row.picked .dist-tok { outline: 1px solid var(--accent); }
+.dist-p { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+
+/* Next-token stepper (assets/stepper.js) */
+.stepper { border: 1px solid var(--rule); border-radius: 6px; padding: 1rem 1.1rem; margin: 1.4rem 0; }
+.stepper-ctx { font-family: "SF Mono", Menlo, monospace; font-size: 0.85rem; background: var(--code-bg); padding: 0.6rem 0.8rem; border-radius: 4px; line-height: 1.7; white-space: pre-wrap; }
+.stepper-gen { color: var(--accent); border-bottom: 1px solid var(--accent); white-space: pre; }
+.stepper-cursor { color: var(--muted); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.stepper-q { font-weight: 600; margin: 0.9rem 0 0.5rem; }
+.stepper-opts { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.stepper-opt, .stepper-next {
+  font: inherit; font-size: 0.9rem; color: var(--fg); background: transparent;
+  border: 1px solid var(--rule); border-radius: 5px; padding: 0.35rem 0.7rem; cursor: pointer;
+}
+.stepper-opt { font-family: "SF Mono", Menlo, monospace; font-size: 0.82rem; white-space: pre; min-width: 3rem; }
+.stepper-opt:hover:not([disabled]), .stepper-next:hover { border-color: var(--accent); }
+.stepper-opt.correct { background: var(--ok-bg); border-color: var(--ok); }
+.stepper-opt.wrong { background: var(--bad-bg); border-color: var(--bad); }
+.stepper-opt[disabled] { cursor: default; }
+.stepper-verdict { margin: 0.8rem 0 0.2rem; font-size: 0.9rem; }
+.stepper-note { font-size: 0.9rem; color: var(--muted); border-left: 2px solid var(--accent); padding-left: 0.7rem; }
+.stepper-next { margin-top: 0.6rem; }
+.stepper-foot { font-size: 0.75rem; color: var(--muted); margin: 0.8rem 0 0; }
+

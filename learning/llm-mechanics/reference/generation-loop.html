@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · The generation loop</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main>
+<header class="lesson-head">
+  <div class="kicker">LLM mechanics · Reference</div>
+  <h1>The generation loop</h1>
+  <p>From <a href="../lessons/0002-the-generation-loop.html">Lesson 2</a>. How a model turns a prompt into output, one token at a time.</p>
+</header>
+
+<h2>The algorithm</h2>
+<pre><code>tokens = tokenize(prompt)
+repeat:
+    logits = model(tokens)[-1]       # one score per vocabulary token
+    probs  = softmax(logits)          # distribution over the vocabulary
+    next   = choose(probs)            # greedy = argmax · sampling = lesson 7
+    tokens.append(next)               # output becomes input
+until next == end_of_text or len(new tokens) == max_tokens
+return detokenize(new tokens)</code></pre>
+<p style="font-size:0.85rem">P(w<sub>1:T</sub> | W<sub>0</sub>) = ∏<sub>t</sub> P(w<sub>t</sub> | w<sub>1:t−1</sub>, W<sub>0</sub>). Each token is conditioned on the prompt plus everything generated so far.<a class="cite" href="https://huggingface.co/blog/how-to-generate">HF</a></p>
+
+<h2>Terms</h2>
+<div class="table-wrap"><table>
+  <tbody>
+    <tr><th>Logits</th><td>Raw scores, one per vocabulary token, from a single forward pass</td></tr>
+    <tr><th>Softmax</th><td>Turns logits into a probability distribution over the vocabulary</td></tr>
+    <tr><th>Greedy decoding</th><td>Always take the argmax. Commits to near-ties, and can miss better sequences.<a class="cite" href="https://huggingface.co/blog/how-to-generate">HF</a></td></tr>
+    <tr><th>Autoregressive</th><td>Each output token is fed back in as input for the next step</td></tr>
+    <tr><th>End-of-text token</th><td>A special token that ends generation (GPT-2: <code>&lt;|endoftext|&gt;</code>, ID 50256)</td></tr>
+    <tr><th>Prefill</th><td>Processing the prompt, all tokens in parallel<a class="cite" href="https://developer.nvidia.com/blog/mastering-llm-techniques-inference-optimization/">NVIDIA</a></td></tr>
+    <tr><th>Decode</th><td>Generating output, one token per forward pass; memory-bound<a class="cite" href="https://developer.nvidia.com/blog/mastering-llm-techniques-inference-optimization/">NVIDIA</a></td></tr>
+    <tr><th>KV cache</th><td>Stored attention keys and values for earlier tokens, so they aren't recomputed each step. Memory grows with sequence length.<a class="cite" href="https://huggingface.co/docs/transformers/cache_explanation">HF</a></td></tr>
+  </tbody>
+</table></div>
+
+<h2>Consequences for builders</h2>
+<div class="table-wrap"><table>
+  <tbody>
+    <tr><th>Latency</th><td>Mostly driven by output length, because decode is serial</td></tr>
+    <tr><th>Facts and numbers</th><td>The model produces the most plausible continuation, not a looked-up value. Put true values in the context.</td></tr>
+    <tr><th>Steering</th><td>Change the input, not the weights. Context changes the distribution but doesn't guarantee the answer.</td></tr>
+    <tr><th>No revision</th><td>Once a token is emitted, every later token is conditioned on it</td></tr>
+    <tr><th>Stopping</th><td>Always set a max-token limit. HF <code>generate()</code> defaults to 20 new tokens.<a class="cite" href="https://huggingface.co/docs/transformers/llm_tutorial">HF</a></td></tr>
+  </tbody>
+</table></div>
+
+<h2>Measured (GPT-2 124M, greedy, 2026-11-15)</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Prompt</th><th>Greedy output</th><th class="num">P(correct "6")</th></tr></thead>
+  <tbody>
+    <tr><td>The quarterly revenue increased by</td><td>␣$1.3 billion to $1…</td><td class="num">2.8%</td></tr>
+    <tr><td>Revenue was $40M in Q1 and $46M in Q2. … increased by</td><td>␣$1.3…</td><td class="num">3.0%</td></tr>
+  </tbody>
+</table></div>
+<p style="font-size:0.85rem;color:var(--muted)">Run it yourself: <code>experiments/step.py "prompt" steps</code>. Add your own rows here.</p>
+</main>
+</body>
+</html>

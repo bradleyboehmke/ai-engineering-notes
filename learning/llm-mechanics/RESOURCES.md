@@ -19,6 +19,13 @@ Prices and limits change often. Every number used in a lesson cites the page and
 - [Article: "How to generate text" (Hugging Face blog, 2020, edited 2023)](https://huggingface.co/blog/how-to-generate)
   Greedy, beam, top-k, top-p sampling with runnable `transformers` code. Use for: the sampling experiment with a small local model.
 
+- [Docs: "Text generation" (Hugging Face Transformers)](https://huggingface.co/docs/transformers/llm_tutorial)
+  The generation loop in one sentence (the model's own outputs fed back until EOS or a length limit), and the `max_new_tokens` default of 20. Use for: lesson 2 and the stop conditions in lesson 3.
+- [Docs: "How caching works" (Hugging Face Transformers)](https://huggingface.co/docs/transformers/cache_explanation)
+  Why the KV cache exists in autoregressive generation, and that its memory grows linearly with sequence length. Use for: lesson 2's builder angle; long-context cost in lesson 15.
+- [Article: "Mastering LLM Techniques: Inference Optimization" (NVIDIA, Verma & Vaidya, 2023)](https://developer.nvidia.com/blog/mastering-llm-techniques-inference-optimization/)
+  Prefill (parallel over the prompt) vs decode (one token at a time, memory-bound), plus KV caching and batching. Use for: why output is slower than input; lessons 2, 12, 15.
+
 ### Variance and reliability (area 2, 5)
 
 - [Article: "Defeating Nondeterminism in LLM Inference" (Thinking Machines, 2025)](https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/)

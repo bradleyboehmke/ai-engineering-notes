@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 2 · The generation loop</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main>
+
+<header class="lesson-head">
+  <div class="kicker">LLM mechanics · Lesson 2 of 16 · Block A: Text in, text out · ~30 min</div>
+  <h1>The generation loop</h1>
+  <p class="win"><strong>Win:</strong> by the end you can explain next-token prediction as one softmax over the vocabulary, repeated in a loop, with each step conditioned on every token before it. You can also say what that means for latency and for wrong answers.</p>
+</header>
+
+<p>In <a href="0001-tokens-are-the-unit.html">lesson 1</a> you saw that a model reads token IDs. This lesson covers how it writes them. Everything later in the path depends on it: output limits, sampling, non-determinism, hallucination, and why output tokens are slow.</p>
+
+<h2>1. One step: a classifier over the vocabulary</h2>
+
+<p>Give the model a sequence of tokens and it returns one score (a <em>logit</em>) for every token in its vocabulary. Softmax turns those scores into a probability distribution over what comes next. Here is GPT-2, a small open model with a 50,257-token vocabulary, given <code>The quarterly revenue increased by</code>:</p>
+
+<div id="step1" class="figure"></div>
+<p class="caption" style="font-size:0.78rem;color:var(--muted)">GPT-2 (124M), top 5 of 50,257 next-token probabilities. ␣ marks a leading space. Measured 2026-11-15 with <code>experiments/step.py</code>.</p>
+
+<div class="aside">
+  <span class="label">ML anchor</span>
+  This is a multiclass classifier with one class per token, so 50,257 classes for GPT-2 and about 200,000 for <code>o200k_base</code>. The features are the whole sequence so far. Pretraining fits it with cross-entropy on "what token came next" across a huge corpus. The part your ML intuition doesn't cover is what happens next: the prediction gets fed back in as an input.
+</div>
+
+<h2>2. The loop: pick, append, repeat</h2>
+
+<p>One step gives one token. To get text, you run the step in a loop:</p>
+
+<pre><code>tokens = tokenize(prompt)
+repeat:
+    probs = softmax(model(tokens))    # one forward pass, full vocabulary
+    next  = choose(probs)             # greedy: argmax; or sample (lesson 7)
+    tokens.append(next)               # the output becomes input
+until next is the end-of-text token, or a max-token limit is hit</code></pre>
+
+<p>Hugging Face's generation guide puts it in one sentence: the model generates the next token given the prompt <em>"along with its own generated outputs"</em>, until it reaches a set length or an end-of-sequence token.<a class="cite" href="#s1">1</a> Formally, a sequence's probability factors into a product of next-token conditionals, P(w<sub>1:T</sub>&nbsp;|&nbsp;W<sub>0</sub>) = ∏<sub>t</sub> P(w<sub>t</sub>&nbsp;|&nbsp;w<sub>1:t−1</sub>, W<sub>0</sub>), where W<sub>0</sub> is the prompt.<a class="cite" href="#s2">2</a> Picking the argmax every time is called <em>greedy</em> decoding.</p>
+
+<h2>3. Run the loop yourself</h2>
+
+<p>This replays a real GPT-2 run. At each step, guess the most likely token <strong>before</strong> you see the distribution. Watch the context grow.</p>
+
+<div class="stepper">
+<script type="application/json">
+{
+  "prompt": "The quarterly revenue increased by",
+  "source": "Replay of GPT-2 (124M), greedy decoding, top 5 of 50,257 shown. Recorded 2026-11-15 with experiments/step.py.",
+  "steps": [
+    { "top": [[" $", 0.215], [" 2", 0.040], [" 1", 0.037], [" 3", 0.032], [" more", 0.029]],
+      "note": "The top token has only 21.5%. Most of the probability is spread over thousands of other tokens." },
+    { "top": [["1", 0.116], ["2", 0.065], ["3", 0.060], ["4", 0.047], ["5", 0.032]],
+      "note": "The model is not recalling a figure. It is choosing which digit is likely after a dollar sign." },
+    { "top": [[".", 0.871], [" million", 0.056], [" billion", 0.048], [",", 0.017], [" trillion", 0.001]],
+      "note": "After '$1', a decimal point is very likely. Some steps are close to certain." },
+    { "top": [["3", 0.105], ["4", 0.098], ["2", 0.097], ["5", 0.094], ["1", 0.086]],
+      "note": "This one is close to a tie: '3' beats '4' by 0.7 points. Greedy decoding commits to '3' anyway, and every later step is conditioned on it." },
+    { "top": [[" billion", 0.651], [" million", 0.317], [" trillion", 0.007], ["bn", 0.007], ["-", 0.003]],
+      "note": "'billion' is likely only because '$1.3' is already in the context. The near-tie in step 4 now shapes the rest of the sentence." },
+    { "top": [[" to", 0.276], [",", 0.191], [" in", 0.086], [" from", 0.066], [" and", 0.055]] },
+    { "top": [[" $", 0.893], [" reach", 0.008], [" a", 0.007], [" an", 0.003], [" £", 0.002]],
+      "note": "89% for '$': the model picks up the dollar pattern from earlier in the sequence." },
+    { "top": [["1", 0.108], ["2", 0.060], ["3", 0.051], ["4", 0.040], ["5", 0.037]],
+      "note": "Eight steps took eight forward passes, and each one read the whole sequence so far." }
+  ]
+}
+</script>
+</div>
+
+<h2>4. What the run shows</h2>
+
+<p><strong>The number is made up.</strong> "$1.3 billion" is not in any source. Each digit was simply the most plausible token at that step. That matters for the analytics use case in your mission: a model asked for a figure always produces a plausible-looking one. Lesson 9 covers why.</p>
+
+<p><strong>A choice can't be taken back.</strong> Step 4 was close to a tie, and the model still committed to one token. From then on, "billion" and everything after it were conditioned on that one choice. Nothing in the loop goes back and revises earlier tokens.</p>
+
+<p><strong>Context shifts the distribution, but it doesn't do the calculation.</strong> I re-ran it with the facts in the prompt: <code>Revenue was $40 million in Q1 and $46 million in Q2. From Q1 to Q2, quarterly revenue increased by $</code>.</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Next-token probability</th><th class="num">Bare prompt</th><th class="num">With Q1/Q2 figures</th></tr></thead>
+  <tbody>
+    <tr><td><code>␣$</code> right after "increased by"</td><td class="num">21.5%</td><td class="num">46.1%</td></tr>
+    <tr><td><code>␣million</code> after "$1"</td><td class="num">5.6%</td><td class="num">18.9%</td></tr>
+    <tr><td><code>6</code> after "$" (the correct answer)</td><td class="num">2.8% (rank 6)</td><td class="num">3.0% (rank 6)</td></tr>
+  </tbody>
+  <caption>GPT-2 (124M), measured 2026-11-15. With the figures in the prompt, the model is more likely to use the right format and units, but no more likely to give the right number. It still wrote "$1.3".</caption>
+</table>
+</div>
+
+<div class="aside">
+  <span class="label">Where ML intuition misleads</span>
+  With a classical model, you change behaviour by retraining it. Here, the weights stay fixed and you change the behaviour by changing the input, because every token is conditioned on everything before it. That's why prompts, documents, and conversation history matter so much. The catch is in the table above: conditioning on the right facts makes the right answer more likely, but it doesn't guarantee it. GPT-2 is tiny, and larger models condition much better. The mechanism is the same.
+</div>
+
+<h2>5. Why a builder cares: input is parallel, output is serial</h2>
+
+<p>The loop explains a cost asymmetry you'll use in every estimate. The model processes the prompt in one parallel pass, called the <em>prefill</em>. It then generates output <em>"autoregressively one at a time"</em>, which is the <em>decode</em> phase. Decode is memory-bound and leaves much of the GPU's compute unused.<a class="cite" href="#s3">3</a> Inference servers keep a <em>KV cache</em> so each step doesn't recompute attention over the earlier tokens. The cache stores intermediate results for every token so far, so memory grows with the sequence.<a class="cite" href="#s4">4</a></p>
+
+<p>In practice, that means:</p>
+<ul>
+  <li><strong>Latency mostly tracks output length.</strong> A 2,000-token prompt with a 50-token reply can return faster than a 200-token prompt with a 2,000-token reply. Lesson 15 adds the numbers (time to first token, tokens per second).</li>
+  <li><strong>Output tokens use more hardware per token than input tokens.</strong> Keep that in mind when lesson 12 shows output priced above input.</li>
+  <li><strong>The stop condition is part of the loop.</strong> Generation ends at an end-of-text token or a token limit. Hugging Face's <code>generate()</code> defaults to just 20 new tokens unless you set <code>max_new_tokens</code>.<a class="cite" href="#s1">1</a> Lesson 3 covers the API version of this: <code>max_tokens</code> and the stop reason.</li>
+</ul>
+
+<h2>6. Check yourself</h2>
+
+<div class="quiz">
+  <div class="quiz-q">
+    <p class="stem">At one generation step, what does the model output?</p>
+    <button class="opt" data-correct>A probability for every token in the vocabulary</button>
+    <button class="opt">The single next word, already chosen for you</button>
+    <button class="opt">A complete draft answer that is then refined</button>
+    <button class="opt">A probability for each word in the prompt</button>
+    <p class="why">One forward pass gives a score for every vocabulary token, and softmax turns the scores into a distribution. Choosing a token is a separate step: greedy decoding or sampling.</p>
+  </div>
+  <div class="quiz-q">
+    <p class="stem">GPT-2 wrote "$1.3 billion". Where did 1.3 come from?</p>
+    <button class="opt">It retrieved a real revenue figure from training data</button>
+    <button class="opt" data-correct>Likely digit tokens, picked greedily one at a time</button>
+    <button class="opt">It calculated the change from numbers in the prompt</button>
+    <button class="opt">A random number generator inserted it into the output</button>
+    <p class="why">Each digit was the argmax at its step: '1' at 11.6%, then '3' at 10.5% in a near-tie. The model doesn't look up or compute a value. It continues the text plausibly.</p>
+  </div>
+  <div class="quiz-q">
+    <p class="stem">Adding the Q1 and Q2 figures raised ' million' from 5.6% to 18.9%, but '6' barely moved. What does that show?</p>
+    <button class="opt">The model ignored the extra context in the prompt</button>
+    <button class="opt">Longer prompts always make the model's answers more accurate</button>
+    <button class="opt">The model retrained itself on the numbers you supplied</button>
+    <button class="opt" data-correct>Context shifts the distribution but does not compute answers</button>
+    <p class="why">Every step is conditioned on the full context, so the context changed the probabilities. Here it helped with format and units but not with the arithmetic. The weights never changed.</p>
+  </div>
+  <div class="quiz-q">
+    <p class="stem">Why does writing a 1,000-token reply take far longer than reading a 1,000-token prompt?</p>
+    <button class="opt">Input tokens are skipped unless the model needs them</button>
+    <button class="opt">Output tokens are longer than input tokens on average</button>
+    <button class="opt" data-correct>Output needs one forward pass per token, in sequence</button>
+    <button class="opt">The model rereads the internet before each output token</button>
+    <p class="why">The prompt is processed in parallel (prefill). Output is generated one token per forward pass (decode), and each pass depends on the one before it.</p>
+  </div>
+  <div class="quiz-q">
+    <p class="stem">From lesson 1: GPT-2's vocabulary is 50,257 tokens. During generation, that vocabulary is…</p>
+    <button class="opt">The maximum number of tokens in one prompt</button>
+    <button class="opt" data-correct>The set of classes each softmax step ranks</button>
+    <button class="opt">The number of words the model has memorized</button>
+    <button class="opt">The count of tokens it generates per second</button>
+    <p class="why">The vocabulary is the output space. The context window, not the vocabulary, limits how many tokens fit in a prompt (lesson 3).</p>
+  </div>
+  <p class="quiz-score"></p>
+</div>
+
+<h2>7. Experiment: step a model yourself (~10 min)</h2>
+
+<div class="box">
+  <span class="label">Do this</span>
+  <ol>
+    <li>From <code>learning/llm-mechanics/</code>, add the model libraries to your venv (GPT-2 downloads on first run, about 500 MB):
+<pre><code>.venv/bin/pip install torch transformers</code></pre></li>
+    <li>Run the script, which is already in <code>experiments/step.py</code>. Read it first. The loop is about ten lines.
+<pre><code>.venv/bin/python experiments/step.py "The quarterly revenue increased by" 8</code></pre>
+    Check that you get the same numbers as above. Greedy decoding on one machine should reproduce them. Lesson 8 shows where that stops being true.</li>
+    <li><strong>Before</strong> each run below, write down the top token you expect:
+      <ul>
+        <li>Change one early word (<code>increased</code> → <code>decreased</code>) and see which steps change.</li>
+        <li>Write a prompt where the answer is in the context, like the Q1/Q2 one, and check whether the model uses it.</li>
+        <li>Find a step where the top token has less than 15% probability. Those are the steps where sampling (lesson 7) will change the output most.</li>
+      </ul></li>
+  </ol>
+</div>
+
+<h2>Leading this</h2>
+<p>Two habits come out of this lesson. First, when a design depends on the model producing a number or a fact, ask where the true value enters the context. If the answer is "the model knows it", that's a design risk, because the model returns the most plausible continuation, not a looked-up value. Second, when someone estimates latency, ask for the expected <em>output</em> length, not only the prompt size. Output is generated serially, so a verbose response format is a latency choice as well as a cost choice.</p>
+
+<div class="box">
+  <span class="label">Your turn: draft, don't copy</span>
+  Draft <strong>next-token prediction</strong> in your own words, in <code>dictionary/</code>, using the same template as Token. Questions for your draft:
+  <ul>
+    <li>Give the one-sentence definition without the word "predict". What does the model actually output?</li>
+    <li>How does one prediction become a paragraph? Explain the loop to a reader who has never seen a softmax.</li>
+    <li>What's the one thing to avoid saying? (Candidates: "the model looks things up", "the model plans its answer". Do you agree with both?)</li>
+    <li>Which numbers from your experiment would make a good usage example?</li>
+  </ul>
+  Bring the draft back and I'll challenge it.
+</div>
+
+<div class="box">
+  <span class="label">Primary source</span>
+  <a href="https://www.youtube.com/watch?v=7xTGNNLPyMI">Andrej Karpathy, "Deep Dive into LLMs like ChatGPT"</a>. Watch the pretraining part, from the neural network's inputs and outputs through inference, before post-training starts. Use the chapter markers on YouTube. It includes a GPT-2 example. For runnable code, see Hugging Face's <a href="https://huggingface.co/blog/how-to-generate">"How to generate text"</a>, which you'll also use in lesson 7.
+</div>
+
+<p><em>Anything unclear, or did your experiment disagree with the numbers here? Ask me. I'm your teacher, and a good follow-up question is often worth more than the next lesson.</em></p>
+
+<h3>Sources</h3>
+<ol style="font-size:0.85rem">
+  <li id="s1"><a href="https://huggingface.co/docs/transformers/llm_tutorial">Hugging Face Transformers, "Text generation"</a>: the loop over the model's own outputs, the EOS token, and the 20-token default for <code>max_new_tokens</code>.</li>
+  <li id="s2"><a href="https://huggingface.co/blog/how-to-generate">Hugging Face, "How to generate text"</a>: the autoregressive factorization; greedy search and its drawback.</li>
+  <li id="s3"><a href="https://developer.nvidia.com/blog/mastering-llm-techniques-inference-optimization/">NVIDIA, "Mastering LLM Techniques: Inference Optimization" (Verma &amp; Vaidya, 2023)</a>: prefill is parallel; decode is one token at a time and memory-bound.</li>
+  <li id="s4"><a href="https://huggingface.co/docs/transformers/cache_explanation">Hugging Face Transformers, "How caching works"</a>: why the KV cache exists, and that its memory grows with sequence length.</li>
+</ol>
+
+<footer class="lesson-foot">
+  <nav>
+    <span>Previous: <a href="0001-tokens-are-the-unit.html">Lesson 1, Tokens</a></span>
+    <span>Reference: <a href="../reference/generation-loop.html">The generation loop</a> · <a href="../reference/tokens.html">Tokens</a></span>
+    <span>Next: Lesson 3, Context window and output limits (not yet written)</span>
+  </nav>
+</footer>
+
+</main>
+<script src="../assets/quiz.js"></script>
+<script src="../assets/stepper.js"></script>
+<script>
+  document.getElementById("step1").appendChild(renderDist(
+    [[" $", 0.215], [" 2", 0.040], [" 1", 0.037], [" 3", 0.032], [" more", 0.029]], " $"));
+</script>
+</body>
+</html>
