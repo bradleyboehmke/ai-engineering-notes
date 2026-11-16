@@ -19,6 +19,7 @@ LLM_MECHANICS = [  # the llm-mechanics samples, alphabetical by title
     "tools/sample-tool.html",
     "topics/sample-tokenization.html",
     "dictionary/token.html",
+    "dictionary/tokenizer.html",
 ]
 
 
@@ -26,6 +27,7 @@ def test_dictionary_lists_its_terms(site):
     assert listings(site, "dictionary/index.html")["dictionary"] == [
         "dictionary/sample-token.html",
         "dictionary/token.html",
+        "dictionary/tokenizer.html",
     ]
 
 
@@ -41,6 +43,7 @@ def test_recent_shows_pages_as_cards_newest_first(site):
     assert "quarto-listing-container-grid" in html
     assert listings(site, "recent.html")["recent"] == [
         "dictionary/token.html",
+        "dictionary/tokenizer.html",
         "essays/sample-essay.html",
         "tools/sample-tool.html",
         "prototypes/sample-prototype.html",
@@ -246,7 +249,7 @@ REORDERED_THEMES = """\
   stage: 4
 """
 
-NEWER = {  # six pages newer than every other page: 13 content pages in all
+NEWER = {  # six pages newer than every other page: 14 content pages in all
     f"essays/newer-{d}.qmd": (
         f"---\ntitle: Newer {d}\ntype: essay\ntheme: evals\nstage: 3\n"
         f"maturity: seed\ndate: 2026-12-0{d}\n---\n\nBody.\n"
@@ -302,9 +305,9 @@ def test_recent_shows_only_the_newest_ten(variant):
         "essays/newer-2.html",
         "essays/newer-1.html",
         "dictionary/token.html",
+        "dictionary/tokenizer.html",
         "essays/sample-essay.html",
         "tools/sample-tool.html",
-        "prototypes/sample-prototype.html",
     ]
 
 
@@ -334,6 +337,7 @@ def test_view_check_expects_recent_to_drop_pages_older_than_the_newest_ten(site,
     assert recent == [
         f'recent.html: listing "recent" is missing essays/newer-{d}.html' for d in range(6, 0, -1)
     ] + [
+        'recent.html: listing "recent" lists unexpected prototypes/sample-prototype.html',
         'recent.html: listing "recent" lists unexpected topics/sample-leading-tokenization.html',
         'recent.html: listing "recent" lists unexpected topics/sample-tokenization.html',
         'recent.html: listing "recent" lists unexpected dictionary/sample-token.html',
