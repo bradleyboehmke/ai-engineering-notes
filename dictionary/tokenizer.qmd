@@ -1,0 +1,186 @@
+---
+title: "Tokenizer"
+type: term
+theme: llm-mechanics
+stage: 1
+lens: practitioner
+prereqs: [token]
+maturity: draft
+date: 2026-11-15
+video: ""
+---
+
+::: {.callout-tip .definition title="Definition"}
+A **tokenizer** is the component that turns text into token IDs before a model
+sees it, and turns token IDs back into text after the model responds. It is a
+fixed vocabulary plus the rules for splitting text against that vocabulary. Both
+are set once, then frozen, and every model is trained against one specific
+tokenizer.
+:::
+
+## More context
+
+The [Token](token.qmd) entry covers what a token is and why models use sub-word
+pieces. So what actually produces those pieces? That's the tokenizer, and it's
+the focus here. As before, the examples use OpenAI's `o200k_base` tokenizer, the
+same one the Token entry uses.
+
+### What a tokenizer holds
+
+Let's start with what's inside one. A tokenizer isn't a neural network. It's a
+small bundle of fixed data and rules, with no weights to train, so the same text
+always gives you the same IDs. There are four pieces worth knowing:
+
+- **Vocabulary.** A lookup table that pairs every known piece of text with an
+  integer ID. `o200k_base` has roughly 200,000 entries.
+- **Splitting rules.** The instructions for breaking text into pieces that exist
+  in the vocabulary. In `o200k_base` they run in two stages. First, a fixed
+  pattern cuts the text into chunks. Then an ordered list of BPE merges joins
+  pieces inside each chunk, and never across a chunk boundary. One rule in the
+  pattern is `\p{N}{1,3}`, meaning "runs of 1 to 3 digits". That's why the Token
+  entry shows `12345.67` becoming `123` `45` `.` `67`. The digit grouping comes
+  from the splitting rules, not the vocabulary.
+- **Special tokens.** Reserved IDs that stand for control markers rather than
+  text, such as `<|endoftext|>`. They mark things like where a document or a chat
+  message ends.
+- **Normalization.** Some tokenizers also clean up text before splitting it, for
+  example with Unicode clean-up or lowercasing
+  ([Hugging Face pipeline docs](https://huggingface.co/docs/tokenizers/pipeline)).
+  tiktoken's encodings skip this step.
+
+Where does all of this come from? The vocabulary and the merges are learned from
+a large body of text in a one-time step called tokenizer training. The split
+pattern and the special tokens are chosen by the people who design the
+tokenizer. Once a model is trained on it, none of the existing entries can
+change.
+
+Why does it matter that the same text always gives the same IDs? Two reasons.
+First, you can count tokens offline with `tiktoken` and trust that OpenAI's
+servers split the same text the same way. Second, when later lessons show a model
+giving different answers to the same prompt, even at temperature 0, you'll know
+the variation isn't coming from the tokenizer.
+
+### It runs in both directions
+
+Here's something that's easy to miss: a tokenizer sits on both sides of the
+model. Your prompt goes in through it, and the model's reply comes back out
+through it. The model itself only ever handles IDs.
+
+| Direction | Input | Output | When it runs |
+|---|---|---|---|
+| Encode | Text | Token IDs | Before the model, on your prompt |
+| Decode | Token IDs | Text | After the model, on each ID it generates |
+
+Notice that the round trip is lossless. Decode the IDs and you get back exactly
+the text you encoded ([tiktoken README](https://github.com/openai/tiktoken)).
+That's why the same tokenizer can both prepare your prompt and render the model's
+reply.
+
+### Why a tokenizer is tied to a model
+
+Could you swap GPT-4o's tokenizer for an entirely different one? Not without
+retraining the model. Here's the reason: during training, the model learns what
+each ID means. If ID 9059 was `" cat"` for the whole of training, then everything
+the model has learned about 9059 is "cat-like."
+
+Now hand the same text to a different tokenizer, and you'll get different IDs.
+Feed those to the original model and it reads a scrambled message, even though
+your text never changed. So the tokenizer is chosen first, the model is trained
+on its output, and the two ship as a pair. GPT-4 is paired with `cl100k_base` and
+GPT-4o with `o200k_base`, which is why token counts differ between them.
+
+Adding to a tokenizer is a different story. Teams often add special tokens when
+they fine-tune, for example. The model then needs new embedding rows for those
+tokens, and fine-tuning trains them without a full retrain. What breaks a model
+is changing or removing tokens it already knows, because their IDs then mean
+something different.
+
+### Where BPE fits
+
+These two terms often get used interchangeably, so let's separate them.
+"Tokenizer" names the component. Byte pair encoding (BPE) is one method for
+building one: it starts from small units and repeatedly merges the most frequent
+pair until the vocabulary reaches a target size. WordPiece and Unigram are other
+methods that fill the same role. `tiktoken` is OpenAI's BPE tokenizer library.
+
+It helps to keep two phases apart:
+
+1. **Training the tokenizer** happens once and produces the vocabulary and merge
+   rules.
+2. **Using the tokenizer** happens on every request and only applies those rules.
+
+## Usage example
+
+The Token entry counted tokens. Here, let's watch the tokenizer itself at work.
+It only takes a few lines of Python: encode a sentence, look at each piece, and
+decode it back.
+
+```python
+import tiktoken
+
+enc = tiktoken.get_encoding("o200k_base")
+
+text = "The cat sat on the mat!"
+
+ids = enc.encode(text)                    # text -> token IDs
+pieces = [enc.decode([i]) for i in ids]   # each ID back to its piece
+restored = enc.decode(ids)                # token IDs -> text
+
+print(ids)
+print(pieces)
+print(restored == text)
+```
+
+```text
+[976, 9059, 10139, 402, 290, 2450, 0]
+['The', ' cat', ' sat', ' on', ' the', ' mat', '!']
+True
+```
+
+Notice anything? Each line of the script tells you something about how a
+tokenizer works:
+
+- `get_encoding` loads the frozen vocabulary and splitting rules. Nothing is
+  learned at this point.
+- `encode` is the only step the model needs before it runs. The model receives
+  the seven integers, not the sentence.
+- `decode` is a pure lookup. The leading spaces live inside the pieces, which is
+  how the text comes back exactly.
+- `True` confirms the round trip is lossless.
+
+## What to avoid
+
+- **Treating the tokenizer as part of the model's intelligence.** It's a
+  deterministic lookup with no understanding of meaning. Meaning starts at the
+  embedding step.
+- **Using "tokenizer" and "BPE" as synonyms.** The tokenizer is the component,
+  and BPE is just one way to build it.
+- **Assuming one tokenizer per provider.** GPT-4 and GPT-4o use different ones.
+  Check the model, not the company.
+- **Expecting `encode(text)` to match the API's token count exactly.** Chat
+  requests wrap your messages in special tokens, so the billed count runs a little
+  higher. Use the provider's token-counting endpoint when the exact number
+  matters.
+- **Decoding one token at a time and assuming whole characters.** A single token
+  can hold part of a multi-byte character, such as an emoji. Decode the full
+  sequence, or buffer when streaming.
+- **Changing or removing tokens a model already knows.** Their IDs would then mean
+  something different from what the model learned, so you'd have to retrain it.
+  Adding tokens is fine and common: teams add special tokens when they fine-tune,
+  and the model learns new embedding rows for them without a full retrain.
+
+## Related terms
+
+- **[Token](token.qmd):** one piece of text the tokenizer produces; the unit
+  models read, write, and bill in.
+- **Token ID:** the integer the tokenizer assigns to a token. The model only ever
+  sees these.
+- **Vocabulary:** the fixed table of every token a tokenizer knows, with its ID.
+- **Byte pair encoding (BPE):** a common algorithm for building a tokenizer by
+  merging frequent pairs.
+- **Special token:** a reserved ID for a control marker, such as end of text,
+  rather than for text itself.
+- **Embedding:** the vector a model looks up for each token ID; the reason a model
+  and its tokenizer can't be separated.
+- **Encode and decode:** the two directions a tokenizer runs, text to IDs and IDs
+  to text.
