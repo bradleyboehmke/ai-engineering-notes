@@ -14,6 +14,7 @@ from scripts.view_check import check, listings
 from test_site_skeleton import render_copy_with
 
 LLM_MECHANICS = [  # the llm-mechanics samples, alphabetical by title
+    "dictionary/context-window.html",
     "dictionary/next-token-prediction.html",
     "topics/sample-leading-tokenization.html",
     "dictionary/sample-token.html",
@@ -26,6 +27,7 @@ LLM_MECHANICS = [  # the llm-mechanics samples, alphabetical by title
 
 def test_dictionary_lists_its_terms(site):
     assert listings(site, "dictionary/index.html")["dictionary"] == [
+        "dictionary/context-window.html",
         "dictionary/next-token-prediction.html",
         "dictionary/sample-token.html",
         "dictionary/token.html",
@@ -44,6 +46,7 @@ def test_recent_shows_pages_as_cards_newest_first(site):
     html = (site / "recent.html").read_text()
     assert "quarto-listing-container-grid" in html
     assert listings(site, "recent.html")["recent"] == [
+        "dictionary/context-window.html",
         "dictionary/next-token-prediction.html",
         "dictionary/token.html",
         "dictionary/tokenizer.html",
@@ -156,6 +159,7 @@ def test_view_check_fails_when_a_page_is_missing_from_the_views(site, tmp_path):
     assert check(root, site) == [
         f'essays/index.html: listing "essays" {missing}',
         f'recent.html: listing "recent" {missing}',
+        'recent.html: listing "recent" lists unexpected dictionary/sample-token.html',
         f'themes/evals.html: listing "theme" {missing}',
         f'path.html: listing "path-evals" {missing}',
     ]
@@ -252,7 +256,7 @@ REORDERED_THEMES = """\
   stage: 4
 """
 
-NEWER = {  # six pages newer than every other page: 15 content pages in all
+NEWER = {  # six pages newer than every other page: 16 content pages in all
     f"essays/newer-{d}.qmd": (
         f"---\ntitle: Newer {d}\ntype: essay\ntheme: evals\nstage: 3\n"
         f"maturity: seed\ndate: 2026-12-0{d}\n---\n\nBody.\n"
@@ -307,10 +311,10 @@ def test_recent_shows_only_the_newest_ten(variant):
         "essays/newer-3.html",
         "essays/newer-2.html",
         "essays/newer-1.html",
+        "dictionary/context-window.html",
         "dictionary/next-token-prediction.html",
         "dictionary/token.html",
         "dictionary/tokenizer.html",
-        "essays/sample-essay.html",
     ]
 
 
@@ -340,6 +344,7 @@ def test_view_check_expects_recent_to_drop_pages_older_than_the_newest_ten(site,
     assert recent == [
         f'recent.html: listing "recent" is missing essays/newer-{d}.html' for d in range(6, 0, -1)
     ] + [
+        'recent.html: listing "recent" lists unexpected essays/sample-essay.html',
         'recent.html: listing "recent" lists unexpected tools/sample-tool.html',
         'recent.html: listing "recent" lists unexpected prototypes/sample-prototype.html',
         'recent.html: listing "recent" lists unexpected topics/sample-leading-tokenization.html',

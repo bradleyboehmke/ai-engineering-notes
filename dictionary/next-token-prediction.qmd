@@ -263,7 +263,7 @@ the dictionary.
 - **Autoregressive generation.** The formal name for the loop, where each output
   becomes part of the next input.
 - **End-of-text token.** The special token that tells the loop to stop.
-- **Context window.** The maximum number of tokens the model can read at once,
+- **[Context window](context-window.qmd).** The maximum number of tokens the model can read at once,
   including the ones it has generated so far.
 - **Hallucination.** A fluent, plausible output that isn't true. For example,
   given "Revenue was \$40 million in Q1 and \$46 million in Q2. From Q1 to Q2,
