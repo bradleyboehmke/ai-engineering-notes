@@ -140,3 +140,25 @@ footer.lesson-foot nav { display: flex; justify-content: space-between; gap: 1re
 .stepper-next { margin-top: 0.6rem; }
 .stepper-foot { font-size: 0.75rem; color: var(--muted); margin: 0.8rem 0 0; }
 
+
+/* Context-budget bar (assets/budget.js) */
+.budget { border: 1px solid var(--rule); border-radius: 6px; padding: 1rem 1.1rem; margin: 1.4rem 0; }
+.budget-controls { display: flex; flex-wrap: wrap; gap: 0.8rem; margin-bottom: 0.9rem; }
+.budget-field { display: flex; flex-direction: column; font-size: 0.8rem; color: var(--muted); }
+.budget-field input, .budget-field select {
+  font: inherit; font-size: 0.9rem; color: var(--fg); background: var(--bg);
+  border: 1px solid var(--rule); border-radius: 4px; padding: 0.25rem 0.4rem; width: 10rem; max-width: 100%;
+}
+.budget-bar { position: relative; display: flex; height: 1.1rem; background: var(--code-bg); border-radius: 3px; overflow: hidden; }
+.budget-seg { height: 100%; }
+.budget-in { background: var(--muted); }
+.budget-out { background: var(--accent); }
+.budget-over { background: repeating-linear-gradient(45deg, var(--bad) 0 4px, transparent 4px 8px); }
+.budget-mark { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -2px; background: var(--fg); }
+.budget-legend { display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; font-size: 0.78rem; color: var(--muted); margin-top: 0.45rem; font-variant-numeric: tabular-nums; }
+.budget-legend i { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 2px; margin-right: 0.3rem; vertical-align: -1px; }
+.budget-verdict { font-size: 0.9rem; margin: 0.7rem 0 0; padding: 0.4rem 0.7rem; border-radius: 4px; }
+.budget-verdict.ok { background: var(--ok-bg); }
+.budget-verdict.warn { background: var(--callout-bg); border-left: 3px solid var(--accent); }
+.budget-verdict.bad { background: var(--bad-bg); }
+.budget-field select { width: 17rem; }

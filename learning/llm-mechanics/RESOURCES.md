@@ -34,8 +34,21 @@ Prices and limits change often. Every number used in a lesson cites the page and
   Hallucination as a consequence of pretraining on unpredictable facts plus evals that reward guessing. Use for: the hallucination lesson; strong bridge to Stage 3 (evals), which is your edge.
 - [Paper: "Lost in the Middle: How Language Models Use Long Contexts" (Liu et al., TACL 2024)](https://arxiv.org/abs/2307.03172)
   Accuracy drops when relevant information sits mid-context, and as context grows. Use for: long-context degradation.
-- [Report: "Context Rot" (Chroma Research, 2025)](https://research.trychroma.com/context-rot)
-  18 models degrade as input grows, even on simple tasks; needle-in-a-haystack overstates real performance. Use for: long-context degradation; a newer complement to Lost in the Middle.
+- [Report: "Context Rot" (Chroma Research, 2025)](https://www.trychroma.com/research/context-rot)
+  18 models degrade as input grows, even on simple tasks; needle-in-a-haystack overstates real performance. No token threshold: degradation is gradual and "non-uniform", varying by model and task (checked 2026-11-18). Tested Claude 4 / GPT-4.1-era models, so re-measure on current ones. Use for: long-context degradation; a newer complement to Lost in the Middle; testing "keep context under 100–200K" folklore in lesson 15.
+
+### Context windows and context engineering (lessons 3, 10, 15; Stage 4)
+
+Podcast notes below come from show notes and summaries; marked _not yet listened_ until Brad has heard them.
+
+- [Article: "What Is The Context Window?" (AI Hero, updated 2025-09-30)](https://www.aihero.dev/what-is-the-context-window)
+  _Optional._ Short introduction: the window is input and output combined, it grows with the conversation, a hard limit per model, lost-in-the-middle. No thinking tokens or compaction. Use for: a lighter first read before lesson 3's Anthropic source.
+- [Podcast: Embedded AI Podcast E05, "Context Management" (Dec 2025, ~46 min)](https://podcasts.apple.com/podcast/id1846828445)
+  _Optional, not yet listened._ Foundational: tokens, how context windows work, why more context isn't better, edge/recency effects, when to start a new session. Use for: lesson 3 away from a screen.
+- [Podcast: The Pragmatic Engineer, "Context engineering with Dex Horthy" (Jul 2026, ~92 min)](https://newsletter.pragmaticengineer.com/p/context-engineering-with-dex-horthy)
+  _Not yet listened._ Practitioner view on degradation as context grows ("smart zone" vs "dumb zone"), intentional compaction, context vs harness engineering. Summaries say he runs 1M models to ~300–400K and smaller ones to ~100K: a heuristic, not a measurement. Use for: lesson 15; Stage 4.
+- [Podcast: Latent Space, "Context Engineering for Agents" with Lance Martin (Sep 2025, ~57 min)](https://www.latent.space/p/context-engineering-for-agents-lance)
+  _Not yet listened._ Five categories of context engineering: offloading, reducing, retrieval, isolation, caching; from building Open Deep Research. Use for: Stage 4 (out of scope for Stage 1).
 
 ### Requests, cost, and latency (areas 3, 5): provider docs
 
@@ -47,6 +60,16 @@ Prices and limits change often. Every number used in a lesson cites the page and
   Thinking tokens are billed as output, count toward `max_tokens`, and how they're billed across turns. Use for: reasoning-model cost.
 - [OpenAI: Prompt caching guide](https://developers.openai.com/api/docs/guides/prompt-caching) · [Cookbook: Prompt Caching 201](https://developers.openai.com/cookbook/examples/prompt_caching_201)
   Automatic caching above 1,024 tokens, exact-prefix matching, measuring `cached_tokens`. Use for: contrasting implicit (OpenAI) vs explicit (Anthropic) caching.
+- [Anthropic: Context windows](https://platform.claude.com/docs/en/build-with-claude/context-windows)
+  Definition (includes the response itself), what counts toward the window, thinking as a subset of `max_tokens`, context rot, and overflow behaviour (400 when input alone is too long; `model_context_window_exceeded` on Claude 4.5+). Use for: lesson 3's primary source; lesson 15.
+- [Anthropic: Stop reasons](https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons)
+  Every `stop_reason` value with handling, the continuation pattern for truncated replies. Use for: lesson 3; Stage 2 (`tool_use`, `refusal`).
+- [Anthropic: Models overview](https://platform.claude.com/docs/en/about-claude/models/overview) · [OpenAI: Models](https://developers.openai.com/api/docs/models)
+  Context window and max output per model (read 2026-11-16: Claude current models 1M / 128K; OpenAI GPT-6 family 1.05M / 128K). Anthropic also gives 1M tokens ≈ 555K words ≈ 2.5M chars on its current tokenizer. Use for: lessons 3 and 6.
+- [OpenAI: Reasoning models](https://developers.openai.com/api/docs/guides/reasoning)
+  `max_output_tokens` includes reasoning tokens; `status: "incomplete"` when hit; costs with no visible output; reserve ≥25K tokens to start. Use for: lessons 3 and 5.
+- [Anthropic: Task budgets](https://platform.claude.com/docs/en/build-with-claude/task-budgets)
+  `max_tokens` is the enforced, truncating limit; a task budget is an advisory countdown the model paces against. Use for: lesson 3's "max_tokens is a cut, not a hint".
 - [OpenAI Help: "What are tokens and how to count them"](https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them)
   The standard rules of thumb (1 token ≈ 4 chars ≈ ¾ word) and their limits, including request overhead. Use for: first-pass estimates.
 - [Anthropic: Token counting](https://platform.claude.com/docs/en/build-with-claude/token-counting)

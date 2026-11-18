@@ -46,6 +46,10 @@ The five areas from your outline are kept, with two changes:
 | 15 | Latency and long-context degradation | Explain TTFT vs tokens/sec, streaming, rate limits, and why more context isn't free | Time a long vs short context; stream vs not | Lost in the Middle; Context Rot |
 | 16 | Prototype: cost calculator | Estimate tokens, cost, and latency for a typical analytics question | Build it (Python, open data) | All of the above |
 
+Planned additions (2026-11-18):
+- **Lesson 10** introduces compaction as the response to a growing history: what it is (earlier turns summarized server-side), that it's lossy, and that summarizing costs tokens. *How* to compact well is Stage 4.
+- **Lesson 15** tests the "keep context under 100–200K even on 1M models" folklore: measure accuracy against context length on one task instead of adopting a number. No primary source gives a threshold (Context Rot finds gradual, model- and task-dependent degradation), and practitioners disagree (Dex Horthy reportedly uses ~300–400K). Supplementary listening: the Dex Horthy episode.
+
 **Checkpoint 3:** draft topic pages "Text in, text out" and "What a request costs", plus the remaining ~20 terms.
 
 ## Corrections to the outline worth testing yourself on

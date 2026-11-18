@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Context budget</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main>
+<header class="lesson-head">
+  <div class="kicker">LLM mechanics · Reference</div>
+  <h1>Context budget</h1>
+  <p>From <a href="../lessons/0003-context-window-and-output-limits.html">Lesson 3</a>. How much fits in one request, and how to tell when a reply was cut off.</p>
+</header>
+
+<h2>The rule</h2>
+<pre><code>input_tokens + max_tokens  ≤  context window    # input and output share one sequence
+               max_tokens  ≤  max output        # per-reply ceiling, set by the model
+input = system + messages + tools + images/docs    output = text + thinking + tool calls</code></pre>
+<p style="font-size:0.85rem">Output counts because each generated token is appended and read on the next step (<a href="generation-loop.html">generation loop</a>).<a class="cite" href="https://platform.claude.com/docs/en/build-with-claude/context-windows">Anthropic</a></p>
+
+<h2>Terms</h2>
+<div class="table-wrap"><table>
+  <tbody>
+    <tr><th>Context window</th><td>All tokens the model can reference while generating, including its own reply. Not the training data.</td></tr>
+    <tr><th>Max output</th><td>The model's limit on tokens generated in one reply</td></tr>
+    <tr><th><code>max_tokens</code></th><td>Your cap for this reply (OpenAI: <code>max_output_tokens</code>). A hard cut, not a length hint.</td></tr>
+    <tr><th>Stop reason</th><td>Why generation ended. The only signal that a 200 OK reply is incomplete.</td></tr>
+    <tr><th>Context rot</th><td>Accuracy and recall degrade as context grows. Fitting isn't the same as working.</td></tr>
+  </tbody>
+</table></div>
+
+<h2>What happens when it doesn't fit (Claude)</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Situation</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>Finished on its own</td><td><code>stop_reason: "end_turn"</code></td></tr>
+    <tr><td>Hit your <code>max_tokens</code></td><td><code>stop_reason: "max_tokens"</code>; truncated, every token billed</td></tr>
+    <tr><td>input + <code>max_tokens</code> &gt; window</td><td>Claude 4.5+: accepted; may stop with <code>"model_context_window_exceeded"</code>. Older: validation error.</td></tr>
+    <tr><td>input alone &gt; window</td><td>HTTP 400, "prompt is too long". Nothing generated or dropped.</td></tr>
+  </tbody>
+  <caption>Anthropic context-windows and stop-reason docs, read 2026-11-16. OpenAI: <code>status: "incomplete"</code>, <code>incomplete_details.reason: "max_output_tokens"</code>.</caption>
+</table></div>
+
+<h2>Limits (read 2026-11-16)</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Model</th><th class="num">Window</th><th class="num">Max output</th></tr></thead>
+  <tbody>
+    <tr><td>Claude Fable 5.2 / Opus 5.5 / Sonnet 5.5 / Haiku 5.5</td><td class="num">1M</td><td class="num">128K</td></tr>
+    <tr><td>Claude Haiku 4.5, Sonnet 4.5</td><td class="num">200K</td><td class="num">64K</td></tr>
+    <tr><td>OpenAI GPT-6 / 6.1 family</td><td class="num">1.05M</td><td class="num">128K</td></tr>
+    <tr><td>GPT-2 (124M)</td><td class="num">1,024</td><td class="num">(shared)</td></tr>
+  </tbody>
+  <caption>Sources: <a href="https://platform.claude.com/docs/en/about-claude/models/overview">Anthropic models</a> · <a href="https://developers.openai.com/api/docs/models">OpenAI models</a>. Limits change, so check before you rely on one. Claude's Models API returns <code>max_input_tokens</code> and <code>max_tokens</code> per model.</caption>
+</table></div>
+
+<h2>Rules of thumb</h2>
+<div class="table-wrap"><table>
+  <tbody>
+    <tr><th>Words → tokens</th><td>Claude's current tokenizer: 1M tokens ≈ 555K words ≈ 2.5M chars (≈1.8 tokens/word). Count real requests with <a href="https://platform.claude.com/docs/en/build-with-claude/token-counting"><code>count_tokens</code></a>.</td></tr>
+    <tr><th>Thinking</th><td>Counts toward <code>max_tokens</code> and is billed as output. A tight cap can leave no visible text. OpenAI suggests reserving at least 25K tokens when you start out.</td></tr>
+    <tr><th>Large <code>max_tokens</code></th><td>Claude's Python SDK requires streaming above about 21K</td></tr>
+    <tr><th>Review checklist</th><td>What bounds the input as data grows? Is the stop reason checked? How was <code>max_tokens</code> chosen?</td></tr>
+  </tbody>
+</table></div>
+
+<h2>Measured (GPT-2 124M, greedy, 2026-11-16)</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th class="num">Input</th><th class="num">max_tokens</th><th class="num">Generated</th><th>Stopped by</th></tr></thead>
+  <tbody>
+    <tr><td class="num">24</td><td class="num">20</td><td class="num">20</td><td>max_tokens (mid-list)</td></tr>
+    <tr><td class="num">1,000</td><td class="num">100</td><td class="num">24</td><td>context window</td></tr>
+    <tr><td class="num">1,025</td><td class="num">n/a</td><td class="num">0</td><td>IndexError (no position row)</td></tr>
+  </tbody>
+</table></div>
+<p style="font-size:0.85rem;color:var(--muted)">Run it yourself: <code>experiments/limits.py</code> (offline) and <code>experiments/limits_api.py</code> (Claude, under a cent). Add your API rows here.</p>
+</main>
+</body>
+</html>

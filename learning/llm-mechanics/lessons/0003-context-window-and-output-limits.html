@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 3 · Context window and output limits</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main>
+
+<header class="lesson-head">
+  <div class="kicker">LLM mechanics · Lesson 3 of 16 · Block A: Text in, text out · ~30 min</div>
+  <h1>Context window and output limits</h1>
+  <p class="win"><strong>Win:</strong> by the end you can budget a request (input + output must fit in the context window, and output can't exceed the max output), and read the stop reason to tell a finished answer from a cut-off one.</p>
+</header>
+
+<p>The <a href="0002-the-generation-loop.html">generation loop</a> from lesson 2 ends one of two ways: the model emits an end-of-text token, or something stops it. This lesson covers the things that stop it, and why your request has a fixed amount of space in the first place.</p>
+
+<h2>1. The window is the loop's working space</h2>
+
+<p>Anthropic defines the context window as <em>"all the text a language model can reference when generating a response, including the response itself"</em>, and contrasts it with the training data: it's a <em>"working memory"</em>.<a class="cite" href="#s1">1</a> Everything you send counts toward it: system prompt, messages, tool definitions, images, documents. So does everything the model generates, including thinking.<a class="cite" href="#s1">1</a></p>
+
+<p>Why does the response count? Look at the loop again: <code>tokens.append(next)</code>. Every output token becomes input for the next step. By the last token of a reply, the model is reading the prompt <em>plus everything it has written so far</em>. Input and output share one sequence, so they share one limit.</p>
+
+<div class="aside">
+  <span class="label">ML anchor</span>
+  For GPT-2, the window is literally a tensor shape. Its learned position embeddings are a 1,024 × 768 table, one row per position. Token 1,025 has no row, and the forward pass fails with <code>IndexError: index out of range</code> (measured below). Newer models encode position differently, but the window is still a fixed property of the model as built and served, and providers publish it per model.
+</div>
+
+<h2>2. Two limits, three numbers</h2>
+
+<p>Every request has to satisfy two constraints:</p>
+
+<pre><code>input_tokens + max_tokens  ≤  context window     # the shared space
+               max_tokens  ≤  max output         # the model's ceiling on one reply</code></pre>
+
+<p>That's three numbers. Two of them belong to the model and one belongs to you:</p>
+<ul>
+  <li><strong>Context window</strong> (model): total tokens in play, input plus output.</li>
+  <li><strong>Max output</strong> (model): the most a single reply can generate, however much room is left.</li>
+  <li><strong><code>max_tokens</code></strong> (you): the cap you set on this reply. It's a required parameter on Claude's API.</li>
+</ul>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th></th><th>Anthropic</th><th>OpenAI</th></tr></thead>
+  <tbody>
+    <tr><td>Example model</td><td>Claude Opus 5.5</td><td>GPT-6.1 Sol</td></tr>
+    <tr><td>Context window</td><td class="num">1M</td><td class="num">1.05M</td></tr>
+    <tr><td>Max output</td><td class="num">128K</td><td class="num">128K</td></tr>
+    <tr><td>Your output cap</td><td><code>max_tokens</code></td><td><code>max_output_tokens</code></td></tr>
+    <tr><td>Cut-off signal</td><td><code>stop_reason: "max_tokens"</code></td><td><code>status: "incomplete"</code>, reason <code>max_output_tokens</code></td></tr>
+    <tr><td>Thinking counts toward the cap</td><td>Yes</td><td>Yes</td></tr>
+  </tbody>
+  <caption>Read 2026-11-16 from the Anthropic models overview and context-windows pages and the OpenAI models and reasoning guides.<a class="cite" href="#s1">1</a><a class="cite" href="#s3">3</a><a class="cite" href="#s4">4</a><a class="cite" href="#s5">5</a> The windows look the same, but the tokenizers differ (lesson 1), so the same document uses a different share of each one.</caption>
+</table>
+</div>
+
+<p>Two practical notes. Max output (128K) is much smaller than the window (1M), so a request can have plenty of room and still be capped. And thinking tokens are <em>"a subset of your <code>max_tokens</code>"</em> and are billed as output.<a class="cite" href="#s1">1</a> OpenAI says the same about reasoning tokens, and warns that a capped response <em>"could incur costs for input and reasoning tokens without receiving a visible response"</em>.<a class="cite" href="#s5">5</a> Lesson 5 covers reasoning models.</p>
+
+<h2>3. Hit both limits on purpose</h2>
+
+<p>GPT-2's window is 1,024 tokens, so you can hit it in seconds on a laptop. I ran the lesson 2 loop with one change: it reports <em>why</em> it stopped.</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Run</th><th class="num">Input</th><th class="num">max_tokens</th><th class="num">Generated</th><th>Stop reason</th></tr></thead>
+  <tbody>
+    <tr><td>1. Ask for a step-by-step guide</td><td class="num">24</td><td class="num">20</td><td class="num">20</td><td><code>max_tokens</code>: cut off after step 1</td></tr>
+    <tr><td>2. Same, after a 1,000-token prompt</td><td class="num">1,000</td><td class="num">100</td><td class="num">24</td><td><code>context_window</code>: only 24 tokens of room</td></tr>
+    <tr><td>3. One token past the window</td><td class="num">1,025</td><td class="num">n/a</td><td class="num">0</td><td><code>IndexError</code>: the model can't run</td></tr>
+  </tbody>
+  <caption>GPT-2 (124M), greedy, measured 2026-11-16 with <code>experiments/limits.py</code>. Run 1 ended on <code>…in your project's root directory.\n\n</code>, right before step 2.</caption>
+</table>
+</div>
+
+<p>The three runs map onto the three outcomes a production API gives you:</p>
+<ol>
+  <li><strong>Your cap hit first.</strong> The reply is truncated. Run 1 stopped exactly where a list was about to continue. The model didn't wrap up, because it wasn't pacing itself against the cap. Anthropic calls <code>max_tokens</code> <em>"the enforced limit"</em> that <em>"truncates the response"</em>. It offers a separate, advisory <em>task budget</em> when you want the model to pace itself and finish gracefully.<a class="cite" href="#s6">6</a></li>
+  <li><strong>The window filled first.</strong> On Claude 4.5 and newer models, a request where input + <code>max_tokens</code> exceeds the window is accepted. If generation reaches the window, it stops with <code>stop_reason: "model_context_window_exceeded"</code>. Earlier models reject the request with a validation error instead.<a class="cite" href="#s1">1</a></li>
+  <li><strong>The input alone doesn't fit.</strong> The API returns HTTP 400, <em>"prompt is too long"</em>, on every model.<a class="cite" href="#s1">1</a> Nothing is generated. Nothing is silently dropped either, unless you turn on a feature like compaction.</li>
+</ol>
+
+<p>One more observation: in my extra runs, GPT-2 never chose end-of-text within 60 tokens, even after it had answered a one-line question. It kept writing more Q&amp;A pairs. A base model has no notion of "done". Lesson 4 explains how assistants learn to stop.</p>
+
+<div class="aside">
+  <span class="label">Where ML intuition misleads</span>
+  In classical sequence models, "max sequence length" is an input constraint. Here the output uses the same budget, so a long prompt leaves less room for the answer (run 2). The bigger trap is assuming a prompt that fits will work. Anthropic's own definition warns that <em>"more context isn't automatically better"</em>: accuracy and recall degrade as the token count grows (<em>context rot</em>).<a class="cite" href="#s1">1</a> Fitting is necessary. It isn't sufficient. Lesson 15 measures this.
+</div>
+
+<h2>4. Truncation is silent: read the stop reason</h2>
+
+<p>A truncated response is not an error. You get HTTP 200, a normal-looking body, and half an answer. If the answer is JSON, you might get half an object. The only signal is a field you have to check:</p>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Claude <code>stop_reason</code></th><th>Meaning</th><th>What your code does</th></tr></thead>
+  <tbody>
+    <tr><td><code>end_turn</code></td><td>The model finished on its own</td><td>Use the response</td></tr>
+    <tr><td><code>max_tokens</code></td><td>Your cap hit first</td><td>Raise <code>max_tokens</code>, or continue the response</td></tr>
+    <tr><td><code>model_context_window_exceeded</code></td><td>The window filled first</td><td>Treat it as truncated</td></tr>
+  </tbody>
+  <caption>The three stop reasons this lesson covers, from Anthropic's stop-reason docs.<a class="cite" href="#s2">2</a> The others (<code>tool_use</code>, <code>stop_sequence</code>, <code>pause_turn</code>, <code>refusal</code>) come up in Stage 2.</caption>
+</table>
+</div>
+
+<p>A truncated reply still costs money. <code>usage.output_tokens</code> reports every token that was generated, and that's what you're billed for (lesson 12). One practical detail: Claude's Python SDK requires streaming for <code>max_tokens</code> above about 21K, to avoid HTTP timeouts.<a class="cite" href="#s2">2</a></p>
+
+<h2>5. Budget a request</h2>
+
+<p>Here's a mission-shaped example. An analytics assistant answers questions over ten years of quarterly reports: 40 reports of about 12,000 words each, plus a 3,000-token system prompt and table schema. Anthropic's docs put 1M tokens at about 555K words on Claude's current tokenizer.<a class="cite" href="#s3">3</a> That's about 1.8 tokens per word, so 480,000 words is roughly 865,000 tokens.</p>
+
+<div class="budget" data-interactive data-input="868000" data-max-tokens="16000"
+     data-presets='[["Claude Opus 5.5 (1M / 128K)", 1000000, 128000], ["OpenAI GPT-6.1 Sol (1.05M / 128K)", 1050000, 128000], ["GPT-2 (1,024 / 1,024)", 1024, 1024], ["Claude Haiku 4.5 (200K / 64K)", 200000, 64000]]'></div>
+
+<div class="box">
+  <span class="label">Do this (3 min)</span>
+  <ol>
+    <li>Each extra report adds about 21,600 tokens. <strong>Before touching the widget</strong>, work out how many reports you can include and still keep the full 16,000 tokens of output room. Then check it.</li>
+    <li>Add three more years (12 reports). What happens, and on which line of section 3 does it land?</li>
+    <li>Switch to Claude Haiku 4.5 (a 200K model). How many reports fit now?</li>
+  </ol>
+  <details><summary>Answers</summary>
+    <p>(1) (1,000,000 − 3,000 − 16,000) ÷ 21,622 ≈ 45.4, so <strong>45 reports</strong>. (2) 52 reports ≈ 1,127,000 input tokens: rejected with a 400 before generation, outcome 3. The request worked for years and then broke the quarter the archive grew. (3) (200,000 − 3,000 − 16,000) ÷ 21,622 ≈ 8.4, so <strong>8 reports</strong>. Note the rate is an estimate: count real tokens with the provider's counting endpoint before you rely on it.<a class="cite" href="#s7">7</a></p>
+  </details>
+</div>
+
+<h2>6. Check yourself</h2>
+
+<div class="quiz">
+  <div class="quiz-q">
+    <p class="stem">On a 1M-window Claude model, a request has 990,000 input tokens and max_tokens = 20,000. What happens?</p>
+    <button class="opt" data-correct>Accepted; output stops at the window if reached</button>
+    <button class="opt">Rejected immediately because input plus output exceeds window</button>
+    <button class="opt">The oldest input tokens are silently dropped first</button>
+    <button class="opt">The model summarizes its input to make room</button>
+    <p class="why">The input fits, so on Claude 4.5 and newer the request is accepted. Only 10,000 tokens of room remain. If generation gets there, the stop reason is <code>model_context_window_exceeded</code>. Earlier models reject it. Nothing is dropped or summarized unless you turn on compaction.</p>
+  </div>
+  <div class="quiz-q">
+    <p class="stem">Your app gets HTTP 200 with stop_reason "max_tokens". What do you have?</p>
+    <button class="opt">A complete answer that the model shortened</button>
+    <button class="opt">An error, so nothing is billed here</button>
+    <button class="opt" data-correct>A partial answer, billed for every token</button>
+    <button class="opt">A summary the model wrote to fit</button>
+    <p class="why"><code>max_tokens</code> is an enforced cut, not a length hint. The reply stops mid-thought (GPT-2 stopped right before step 2), and <code>usage.output_tokens</code> still counts every generated token.</p>
+  </div>
+  <div class="quiz-q">
+    <p class="stem">From lesson 2: why do input and output share one context window?</p>
+    <button class="opt">Providers bill input and output from one pool</button>
+    <button class="opt">The model stores the reply in its weights</button>
+    <button class="opt">Output tokens are larger, so they need space</button>
+    <button class="opt" data-correct>Each output token is appended and becomes input</button>
+    <p class="why">The loop appends each chosen token and runs again. By the final step, the sequence is the prompt plus everything generated, and all of it has to fit.</p>
+  </div>
+  <div class="quiz-q">
+    <p class="stem">GPT-2 raised IndexError on a 1,025-token input. Why at exactly that length?</p>
+    <button class="opt">Its vocabulary has only 1,024 different tokens</button>
+    <button class="opt" data-correct>Its position table has only 1,024 rows</button>
+    <button class="opt">Its memory ran out after 1,024 tokens</button>
+    <button class="opt">Its tokenizer rejects text beyond that length</button>
+    <p class="why">GPT-2 learns one embedding per position, in a 1,024 × 768 table. Position 1,025 has no row to look up. Its vocabulary is 50,257 tokens, which is a separate number.</p>
+  </div>
+  <div class="quiz-q">
+    <p class="stem">A reasoning model returns empty visible text with its output cap hit. Most likely cause?</p>
+    <button class="opt">The prompt was longer than the window</button>
+    <button class="opt">The model refused, but reported it wrongly</button>
+    <button class="opt">Empty text means the answer was cached</button>
+    <button class="opt" data-correct>Thinking tokens used up the output limit</button>
+    <p class="why">Thinking tokens count toward <code>max_tokens</code> / <code>max_output_tokens</code> on both providers. A tight cap can be used up before any visible text. OpenAI suggests reserving at least 25,000 tokens for reasoning and output when you start out.</p>
+  </div>
+  <div class="quiz-q">
+    <p class="stem">From lesson 1: Claude's current tokenizer fits about 2.5M characters in 1M tokens. A 400,000-character document is about…</p>
+    <button class="opt">About 100,000 tokens</button>
+    <button class="opt">About 400,000 tokens</button>
+    <button class="opt" data-correct>About 160,000 tokens</button>
+    <button class="opt">About 1,000,000 tokens</button>
+    <p class="why">400,000 ÷ 2.5 = 160,000. The "4 characters per token" rule gives 100,000, an undercount of 60,000, which is the same gap you measured in lesson 1 (2.7–3.7 chars/token). On a 200K-window model, that difference decides whether the document fits.</p>
+  </div>
+  <p class="quiz-score"></p>
+</div>
+
+<h2>7. Experiment: hit the limits yourself (~10 min)</h2>
+
+<div class="box">
+  <span class="label">Do this</span>
+  <ol>
+    <li><strong>Offline, no cost.</strong> From <code>learning/llm-mechanics/</code>, read <code>experiments/limits.py</code> (it's the lesson 2 loop plus a stop reason), then run it:
+<pre><code>../../.venv/bin/python experiments/limits.py</code></pre>
+    Check your numbers against section 3. Then change the 1,000-token prompt to 1,020. <strong>Predict</strong> how many tokens run 2 generates before you run it.</li>
+    <li><strong>One real API, under a cent.</strong> <code>experiments/limits_api.py</code> counts the prompt's tokens, then sends it to Claude Haiku 5.5 twice: once with <code>max_tokens=30</code> and once with 1,024.
+<pre><code>../../.venv/bin/pip install anthropic
+export ANTHROPIC_API_KEY=...        # or: ant auth login
+../../.venv/bin/python experiments/limits_api.py</code></pre>
+    Before you run it, write down: the two stop reasons, the first call's <code>output_tokens</code>, and whether <code>count_tokens</code> matches the reported <code>input_tokens</code>.</li>
+    <li><strong>Overflow the window (optional).</strong> Run it again with <code>--overflow</code>. It asks the Models API for Claude Haiku 4.5's window (200K), builds a prompt 5% bigger, counts it, and sends it. <strong>Predict</strong> before you run it: which HTTP status do you get, how many output tokens are generated, and is any of the prompt silently dropped? (Section 3, outcome 3.) It sends about 0.5 MB, and the API rejects it before generating anything. Even if the rejected input were billed in full, it would cost about $0.21.</li>
+    <li><strong>Predict, then try.</strong> Delete the <code>thinking={"type": "disabled"}</code> line and rerun the 30-token call. Does the visible text get shorter? Why? (Section 2 has the answer. Lesson 5 has the details.)</li>
+  </ol>
+  Bring the API numbers back. They'll be your usage example, and lesson 12 will price them.
+</div>
+
+<h2>Leading this</h2>
+<p>Two review questions catch most mistakes here. First: <em>what stops this input from growing?</em> Conversation history, retrieved documents, and "include all the reports" all grow over time. A design that fits today can fail with a 400 the quarter the data doubles. Look for a bound, whether that's a cap, a window of recent items, retrieval, or compaction. Second: <em>does the code check the stop reason?</em> A <code>max_tokens</code> cut returns 200 OK, so without that check, truncated JSON or a half-finished summary goes downstream unnoticed. Ask how <code>max_tokens</code> was chosen, and what the code does when it's hit.</p>
+
+<div class="box">
+  <span class="label">Your turn: draft, don't copy</span>
+  Draft <strong>context window</strong> in your own words, in <code>dictionary/</code>, using the same template as your other terms. Questions for your draft:
+  <ul>
+    <li>Define it in one sentence without the words "memory" or "remember". What is actually limited?</li>
+    <li>Why does the output count? Can you explain it with the loop from your next-token prediction entry and link to it?</li>
+    <li>Where do <code>max_tokens</code> and max output fit? Do they belong in this entry, under Related terms, or as their own term?</li>
+    <li>What should a reader avoid saying? (Candidates: "the model remembers the whole conversation", "bigger window, better answers". Do you agree with both?)</li>
+    <li>Which of your experiment numbers would make the best usage example: GPT-2's 24 tokens of room, or your API's stop reasons?</li>
+  </ul>
+  Bring the draft back and I'll challenge it.
+</div>
+
+<div class="box">
+  <span class="label">Primary source</span>
+  <a href="https://platform.claude.com/docs/en/build-with-claude/context-windows">Anthropic, "Context windows"</a> (~10 min). Read "How the context window works" and "Context window overflow behavior". Skip the thinking-with-tools diagrams for now; they come back in lesson 5. For OpenAI's side, read the <a href="https://developers.openai.com/api/docs/guides/reasoning">reasoning guide</a>'s section on managing the context window and costs.
+</div>
+
+<p><em>Anything unclear, or did your API numbers disagree with what you predicted? Ask me. I'm your teacher, and a good follow-up question is often worth more than the next lesson.</em></p>
+
+<h3>Sources</h3>
+<ol style="font-size:0.85rem">
+  <li id="s1"><a href="https://platform.claude.com/docs/en/build-with-claude/context-windows">Anthropic, "Context windows"</a> (read 2026-11-16): the definition, what counts toward the window, thinking tokens as a subset of <code>max_tokens</code>, context rot, and overflow behaviour.</li>
+  <li id="s2"><a href="https://platform.claude.com/docs/en/build-with-claude/handling-stop-reasons">Anthropic, "Stop reasons"</a> (read 2026-11-16): stop-reason values and handling; the continuation pattern; the streaming note for large <code>max_tokens</code>.</li>
+  <li id="s3"><a href="https://platform.claude.com/docs/en/about-claude/models/overview">Anthropic, "Models overview"</a> (read 2026-11-16): context window and max output per model; 1M tokens ≈ 555K words ≈ 2.5M characters on the current tokenizer.</li>
+  <li id="s4"><a href="https://developers.openai.com/api/docs/models">OpenAI, "Models"</a> (read 2026-11-16): GPT-6 family context windows (1.05M) and max output (128K).</li>
+  <li id="s5"><a href="https://developers.openai.com/api/docs/guides/reasoning">OpenAI, "Reasoning models"</a> (read 2026-11-16): <code>max_output_tokens</code> includes reasoning tokens; <code>status: "incomplete"</code>; costs without visible output; the 25,000-token reserve.</li>
+  <li id="s6"><a href="https://platform.claude.com/docs/en/build-with-claude/task-budgets">Anthropic, "Task budgets"</a> (read 2026-11-16): <code>max_tokens</code> as the enforced, truncating limit vs an advisory budget the model paces against.</li>
+  <li id="s7"><a href="https://platform.claude.com/docs/en/build-with-claude/token-counting">Anthropic, "Token counting"</a>: counting a full request's input tokens before you send it.</li>
+</ol>
+
+<footer class="lesson-foot">
+  <nav>
+    <span>Previous: <a href="0002-the-generation-loop.html">Lesson 2, The generation loop</a></span>
+    <span>Reference: <a href="../reference/context-budget.html">Context budget</a> · <a href="../reference/generation-loop.html">The generation loop</a> · <a href="../reference/tokens.html">Tokens</a></span>
+    <span>Next: Lesson 4, Base model vs assistant (not yet written)</span>
+  </nav>
+</footer>
+
+</main>
+<script src="../assets/quiz.js"></script>
+<script src="../assets/budget.js"></script>
+</body>
+</html>
