@@ -82,7 +82,7 @@
   <li><strong>The input alone doesn't fit.</strong> The API returns HTTP 400, <em>"prompt is too long"</em>, on every model.<a class="cite" href="#s1">1</a> Nothing is generated. Nothing is silently dropped either, unless you turn on a feature like compaction.</li>
 </ol>
 
-<p>One more observation: in my extra runs, GPT-2 never chose end-of-text within 60 tokens, even after it had answered a one-line question. It kept writing more Q&amp;A pairs. A base model has no notion of "done". Lesson 4 explains how assistants learn to stop.</p>
+<p>One more observation: in my extra runs, GPT-2 never chose end-of-text within 60 tokens, even after it had answered a one-line question. It kept writing more Q&amp;A pairs. A base model has no notion of "done". <a href="0004-base-model-vs-assistant.html">Lesson 4</a> explains how assistants learn to stop.</p>
 
 <div class="aside">
   <span class="label">Where ML intuition misleads</span>
@@ -237,7 +237,7 @@ export ANTHROPIC_API_KEY=...        # or: ant auth login
   <nav>
     <span>Previous: <a href="0002-the-generation-loop.html">Lesson 2, The generation loop</a></span>
     <span>Reference: <a href="../reference/context-budget.html">Context budget</a> · <a href="../reference/generation-loop.html">The generation loop</a> · <a href="../reference/tokens.html">Tokens</a></span>
-    <span>Next: Lesson 4, Base model vs assistant (not yet written)</span>
+    <span>Next: <a href="0004-base-model-vs-assistant.html">Lesson 4, Base model vs assistant</a></span>
   </nav>
 </footer>
 

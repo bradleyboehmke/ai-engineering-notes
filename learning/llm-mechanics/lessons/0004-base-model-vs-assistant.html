@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 4 · Base model vs assistant</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main>
+
+<header class="lesson-head">
+  <div class="kicker">LLM mechanics · Lesson 4 of 16 · Block B: Where behaviour comes from · ~30 min</div>
+  <h1>Base model vs assistant</h1>
+  <p class="win"><strong>Win:</strong> by the end you can explain why a base model continues your text but an assistant answers it, using the same generation loop for both, and say where a "conversation" actually lives in the tokens.</p>
+</header>
+
+<p><a href="0003-context-window-and-output-limits.html">Lesson 3</a> ended on an observation: GPT-2 never chose end-of-text, even after it had answered a question. It kept writing more Q&amp;A pairs. That's not a GPT-2 bug. It's what every <em>base model</em> does, and the fix doesn't involve changing the loop.</p>
+
+<h2>1. Two training stages, one loop</h2>
+
+<p>Hugging Face's chat docs put it in one line: <em>"All causal LMs, whether chat-trained or not, continue a sequence of tokens."</em><a class="cite" href="#s1">1</a> What differs is the data the weights were fitted to:</p>
+<ul>
+  <li><strong>Pretraining</strong> fits next-token prediction on a huge corpus of documents. The result is a <strong>base model</strong>. Given text, it writes the most plausible continuation <em>of that kind of document</em>.<a class="cite" href="#s1">1</a></li>
+  <li><strong>Post-training</strong> fine-tunes the base model on data <em>"formatted as a sequence of messages"</em>.<a class="cite" href="#s1">1</a> Usually that's supervised fine-tuning (SFT) on example conversations, then a preference stage (RLHF or DPO) that pushes toward replies people rated better.<a class="cite" href="#s3">3</a><a class="cite" href="#s4">4</a> The result is an <strong>assistant</strong>, also called an instruct or chat model.</li>
+</ul>
+
+<p>The pair used below makes this concrete. SmolLM2-360M was pretrained on 4 trillion tokens. SmolLM2-360M-Instruct is the same model after SFT on about 485,000 conversations, then DPO.<a class="cite" href="#s3">3</a> Same architecture, same tokenizer, same loop. Only the weights differ.</p>
+
+<div class="aside">
+  <span class="label">ML anchor</span>
+  Think of it as fine-tuning onto a narrow conditional distribution. Pretraining learns P(next token | any web document). Post-training reshapes it toward one document type: a conversation where the assistant's turn is a helpful answer that then ends. The assistant is still continuing a document. It's just a document where the likely continuation is an answer. A prompt that's in-distribution for one model can be out-of-distribution for the other, and run 4 below shows what that looks like.
+</div>
+
+<h2>2. Roles are just tokens</h2>
+
+<p>If the model only sees one token sequence, where do "user" and "assistant" go? Into the sequence, as tokens. A <strong>chat template</strong> renders your list of messages into one string with control tokens that mark each turn.<a class="cite" href="#s1">1</a> This is SmolLM2-Instruct's template applied to a single user message:</p>
+
+<pre><code>&lt;|im_start|&gt;system
+You are a helpful AI assistant named SmolLM, trained by Hugging Face&lt;|im_end|&gt;
+&lt;|im_start|&gt;user
+Summarize in one sentence: Q3 revenue was $4.2M, up 8% from Q2, driven by enterprise renewals.&lt;|im_end|&gt;
+&lt;|im_start|&gt;assistant
+</code></pre>
+
+<p>Three things to notice:</p>
+<ol>
+  <li><strong>The prompt ends with an empty assistant turn.</strong> That's <code>add_generation_prompt=True</code>. Without it, Hugging Face warns, a model may do <em>"something strange, like <strong>continuing</strong> the user's message instead of replying to it"</em>.<a class="cite" href="#s1">1</a> Replying is just the most plausible way to fill an open assistant turn.</li>
+  <li><strong>There's a system prompt you didn't write.</strong> The template adds a default one. What you send isn't always all that's in the context (the same applies to token counts from lesson 3).</li>
+  <li><strong><code>&lt;|im_end|&gt;</code> closes every turn.</strong> In SFT data, every assistant turn ends with it. That's how an assistant learns to stop.</li>
+</ol>
+
+<p>Formats differ by model family, even for models fine-tuned from the same base.<a class="cite" href="#s1">1</a> OpenAI's open-weight gpt-oss models use the "harmony" format, <code>&lt;|start|&gt;user&lt;|message|&gt;…&lt;|end|&gt;</code>, and OpenAI says gpt-oss <em>"should not be used without using the harmony format, as it will not work correctly"</em>.<a class="cite" href="#s5">5</a> With hosted APIs (Claude's Messages API, OpenAI's Responses API) you send a list of messages, and the provider turns them into tokens on its side. OpenAI says so explicitly for gpt-oss served through an API.<a class="cite" href="#s5">5</a> Neither provider asks you to write the format, but some format is there, and it's the reason a "conversation" is really one sequence. Lesson 10 builds on that.</p>
+
+<h2>3. One prompt, five runs</h2>
+
+<p>I sent the summary prompt above to both models, greedy, with <code>max_tokens=60</code>. The five settings were:</p>
+<ul>
+  <li><strong>Base · raw</strong>: the base model, given the bare text.</li>
+  <li><strong>Instruct · raw</strong>: the assistant, given the bare text, with no template.</li>
+  <li><strong>Instruct · template</strong>: the assistant, given the chat-templated string from section 2.</li>
+  <li><strong>Base · template</strong>: the base model, given that same templated string.</li>
+  <li><strong>Base · few-shot</strong>: the base model, given a "report notes" document with one worked example, so the next line is a summary.</li>
+</ul>
+
+<div class="box">
+  <span class="label">Do this first (4 min)</span>
+  Before reading on, match each recorded output to the run that produced it. Use what you know from sections 1 and 2: which outputs stop, which ones continue a pattern, and which ones look like a reply. <code>↵</code> marks a newline.
+</div>
+
+<div class="match" data-choices='["Base · raw", "Instruct · raw", "Instruct · template", "Base · template", "Base · few-shot"]'>
+  <div class="match-item" data-answer="Base · raw">
+    <pre> Q4 revenue was $4.5M, up 10% from Q3. Q5 revenue was $4.8M, up 12% from Q4. Q6 revenue was $5.1M, up 13% from Q5. Q7 revenue</pre>
+    <p class="why">The base model, raw. A line of quarterly figures most plausibly continues with more quarterly figures, so it wrote Q4–Q7 (there is no Q5) and ran into the 60-token cap. Every number is invented. That's lesson 2's point: plausible, not looked up.</p>
+  </div>
+  <div class="match-item" data-answer="Instruct · raw">
+    <pre>↵↵Q4 revenue was $4.5M, up 10% from Q3, driven by new product launches.&lt;|im_end|&gt;</pre>
+    <p class="why">The assistant, raw. It stopped on its own, so post-training is at work. But without the template it read the text as a pattern to extend, not an instruction, and invented a Q4. Post-training works best in the format it was trained on.</p>
+  </div>
+  <div class="match-item" data-answer="Instruct · template">
+    <pre>Q3 revenue increased by 8% to $4.2 million, driven by enterprise renewals.&lt;|im_end|&gt;</pre>
+    <p class="why">The assistant with its template. It's the only output that does the task and stops: 22 tokens, ending on the end-of-turn token it saw at the end of every SFT reply.</p>
+  </div>
+  <div class="match-item" data-answer="Base · template">
+    <pre>Summarize in one sentence: Q3 revenue was $4.2M, up 8% from Q2, driven by enterprise renewals.��summarize↵��summarize↵��summarize↵…</pre>
+    <p class="why">The base model with the template. The base tokenizer has the same <code>&lt;|im_start|&gt;</code> and <code>&lt;|im_end|&gt;</code> tokens (IDs 1 and 2), so its input was identical to run 3. It echoed the user turn and degenerated. The tokens carry no meaning without the training that gave them one.</p>
+  </div>
+  <div class="match-item" data-answer="Base · few-shot">
+    <pre> Revenue grew 8% to $4.2M in Q3 on enterprise renewals.↵↵Figures: Q2 revenue was $4.5M, up 10% from Q1, driven by new logos.↵One-sentence summary: Revenue grew 10% to</pre>
+    <p class="why">The base model, few-shot. When the document's next line is a summary, a base model writes a correct one. Then it keeps going, inventing the next example, because nothing in this kind of document says "stop here".</p>
+  </div>
+  <p class="match-score"></p>
+</div>
+
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Run</th><th class="num">Input</th><th class="num">Generated</th><th>Stop reason</th><th>Did the task?</th></tr></thead>
+  <tbody>
+    <tr><td>1. Base · raw</td><td class="num">31</td><td class="num">60</td><td><code>max_tokens</code></td><td>No: continued the list</td></tr>
+    <tr><td>2. Instruct · raw</td><td class="num">31</td><td class="num">28</td><td>end of turn</td><td>No: continued, then stopped</td></tr>
+    <tr><td>3. Instruct · template</td><td class="num">61</td><td class="num">22</td><td>end of turn</td><td><strong>Yes</strong></td></tr>
+    <tr><td>4. Base · template</td><td class="num">61</td><td class="num">60</td><td><code>max_tokens</code></td><td>No: echoed, degenerated</td></tr>
+    <tr><td>5. Base · few-shot</td><td class="num">92</td><td class="num">60</td><td><code>max_tokens</code></td><td>Yes, then kept writing</td></tr>
+  </tbody>
+  <caption>SmolLM2-360M and -Instruct, greedy, <code>max_tokens=60</code>, measured 2026-11-18 with <code>experiments/base_vs_instruct.py</code>. The template's 30 extra tokens are input you pay for and didn't write.</caption>
+</table>
+</div>
+
+<p>Read the table by column. <strong>Stopping</strong> splits by weights: only the assistant ever ends a turn (runs 2 and 3). <strong>Doing the task</strong> needs the right document. The assistant needs its template (3 vs 2), and the base model needs a document whose next line is the answer (5 vs 1). That's how base models were steered before assistants existed: you wrote the start of a document and let the model finish it. A stop sequence (lesson 3's <code>stop_sequence</code>) does the stopping that post-training now does.</p>
+
+<h2>4. What post-training buys</h2>
+
+<p>InstructGPT (OpenAI, 2022) is the classic evidence. It opens with <em>"Making language models bigger does not inherently make them better at following a user's intent."</em> Labelers preferred outputs from the 1.3B InstructGPT model to those of the 175B GPT-3, <em>"despite having 100x fewer parameters."</em><a class="cite" href="#s4">4</a> The assistant behaviour you rely on comes from post-training: answering instead of continuing, following the requested format, stopping, tone, refusals, and the persona in that default system prompt.</p>
+
+<div class="aside">
+  <span class="label">Where ML intuition misleads</span>
+  It's tempting to treat the assistant as "the base model plus more knowledge", or to think of fine-tuning as how you teach a model your facts. Here the post-training set is tiny next to pretraining (about 485K conversations vs 4T tokens), and what it changed was <em>behaviour</em>. Run 3's summary is correct because the figures were in the context, not because the model knows your revenue. Karpathy's framing in the primary source helps: talking to an assistant is like talking to a simulation of the people who wrote its post-training conversations, built on top of the base model's knowledge of the internet. And that's why a model upgrade can change behaviour even when your prompt hasn't changed. The new model has new post-training.
+</div>
+
+<h2>5. Check yourself</h2>
+
+<div class="quiz">
+  <div class="quiz-q">
+    <p class="stem">In run 1, why did the base model write Q4 to Q7 figures?</p>
+    <button class="opt" data-correct>A list of quarters usually continues that way</button>
+    <button class="opt">It treated the prompt as a forecasting request</button>
+    <button class="opt">Its training data held these exact figures somewhere</button>
+    <button class="opt">Greedy decoding always repeats the previous sentence's pattern</button>
+    <p class="why">A base model writes the most plausible continuation of the document it's shown. Text that reads like a line of quarterly figures most plausibly continues with more of them. It didn't "decide" to forecast, and the numbers aren't recalled from anywhere.</p>
+  </div>
+  <div class="quiz-q">
+    <p class="stem">Run 3 stopped after 22 tokens. What made it stop?</p>
+    <button class="opt">The max_tokens cap of 60 was reached quite early</button>
+    <button class="opt">The chat template tells the API where to stop</button>
+    <button class="opt" data-correct>It chose the end-of-turn token it learned in post-training</button>
+    <button class="opt">The summary sentence was complete, so generation simply ended</button>
+    <p class="why">The loop only stops on a special token or a cap. The cap was 60. The assistant picked <code>&lt;|im_end|&gt;</code> as the most likely next token because every SFT reply ends with it. Run 4 had the same template and never stopped.</p>
+  </div>
+  <div class="quiz-q">
+    <p class="stem">A teammate sends raw text, with no chat template, to an instruct model running locally. What happens?</p>
+    <button class="opt">An error, because instruct models require role tokens</button>
+    <button class="opt">It behaves exactly like the base model would</button>
+    <button class="opt">The tokenizer adds the chat template for you</button>
+    <button class="opt" data-correct>No error, but output quality can quietly drop</button>
+    <p class="why">Run 2: it ran, stopped, and did the wrong task. Nothing raises. Hugging Face says that with the wrong control tokens, models have <em>"drastically worse performance"</em>. Calling the tokenizer directly doesn't apply the template. <code>apply_chat_template</code> does.</p>
+  </div>
+  <div class="quiz-q">
+    <p class="stem">What does a hosted messages API do with your system, user, and assistant messages?</p>
+    <button class="opt">Sends each role to its own separately trained model</button>
+    <button class="opt" data-correct>Renders them into one token sequence with role markers</button>
+    <button class="opt">Stores them server-side and sends only the newest one</button>
+    <button class="opt">Encodes roles as metadata that never enters the context</button>
+    <p class="why">Roles are tokens in a single sequence, rendered with the model's chat template on the provider's side. One model reads all of it, and all of it counts toward the context window (lesson 3).</p>
+  </div>
+  <div class="quiz-q">
+    <p class="stem">From lesson 3: GPT-2 never chose end-of-text within 60 tokens. In this lesson's terms, why?</p>
+    <button class="opt">Its 1,024-token context window was too small to finish</button>
+    <button class="opt">Greedy decoding cannot ever pick the end-of-text token</button>
+    <button class="opt" data-correct>It's a base model, never trained to end turns</button>
+    <button class="opt">Its vocabulary has no end-of-text token at all</button>
+    <p class="why">GPT-2 has an end-of-text token (ID 50256) and greedy can pick it. But in web text, the end of a document rarely comes right after one answer, so it's rarely the most likely next token. Assistants learn to end turns in post-training.</p>
+  </div>
+  <div class="quiz-q">
+    <p class="stem">From lesson 2: the few-shot base run (5) got the summary right. Was it looking anything up?</p>
+    <button class="opt">Yes, few-shot examples updated its weights during the run</button>
+    <button class="opt" data-correct>No, it predicted the likeliest continuation of the document</button>
+    <button class="opt">Yes, it copied the figures from its training data</button>
+    <button class="opt">No, the instruct model answered on its behalf instead</button>
+    <p class="why">Same loop as always: score every token, pick one, append. The figures were in the context, and the worked example made a summary the likely next line. The weights didn't change. Steering happens through the input.</p>
+  </div>
+  <div class="quiz-q">
+    <p class="stem">Labelers preferred the 1.3B InstructGPT over the 175B GPT-3. What does that show?</p>
+    <button class="opt">Smaller models know more facts than larger ones do</button>
+    <button class="opt" data-correct>Post-training can matter more than scale for following intent</button>
+    <button class="opt">GPT-3 was badly undertrained compared with the newer InstructGPT</button>
+    <button class="opt">Labelers simply preferred shorter answers, which small models write</button>
+    <p class="why">Scale buys knowledge and capability. Post-training buys the behaviour people actually rate: following the instruction. The paper's opening line is that bigger <em>"does not inherently"</em> mean better at following intent.</p>
+  </div>
+  <p class="quiz-score"></p>
+</div>
+
+<h2>6. Experiment: run both models yourself (~10 min)</h2>
+
+<div class="box">
+  <span class="label">Do this</span>
+  <ol>
+    <li><strong>Offline, no cost.</strong> From <code>learning/llm-mechanics/</code>, run:
+<pre><code>../../.venv/bin/python experiments/base_vs_instruct.py</code></pre>
+    The first run downloads both models (about 1.4 GB in total). Check that your numbers match section 3. They should, because greedy decoding on one machine is repeatable. Lesson 8 tests whether that still holds on a provider's servers.</li>
+    <li><strong>Predict, then try a question.</strong> Run it with <code>"What is the capital of France?" 50</code>. Before you run it, write down what the base model does after it says "Paris". (Hint: think about what web pages that contain this question look like.)</li>
+    <li><strong>Make the base model stop.</strong> In <code>generate()</code>, add a stop sequence: end the loop when the decoded output contains <code>"\n\n"</code>. Rerun run 5. Does it now behave like an assistant? What could still go wrong with a stop sequence on real inputs?</li>
+    <li><strong>Change the system prompt (optional).</strong> Pass <code>[{"role": "system", "content": "Answer in exactly five words."}, {"role": "user", "content": PROMPT}]</code> to the template. Print the templated string first. Where did the default system prompt go?</li>
+  </ol>
+  Bring back your France output and your answer to step 3. They'll make a good usage example for your entry.
+</div>
+
+<h2>Leading this</h2>
+<p>Hosted chat APIs serve assistants and handle the format for you, so this goes wrong in two places. First, <em>open-weight or self-hosted models</em>. Ask whether the code calls the model's own chat template, or builds the prompt by hand. A missing or wrong template doesn't raise an error. It quietly makes answers worse (run 2), so it slips past "it runs" checks. Second, <em>model upgrades</em>. A new model version brings new post-training, which can change format, length, and refusals while the prompt stays the same. Treat an upgrade like a dependency bump and rerun your evals before you ship it. That's Stage 3's job, and it's the beginning of why "run it once and check" isn't enough.</p>
+
+<div class="box">
+  <span class="label">Your turn: draft, don't copy</span>
+  Draft <strong>base model</strong> and <strong>post-training</strong> in your own words, in <code>dictionary/</code>, using your usual template. Questions for your drafts:
+  <ul>
+    <li>Define a base model without using the word "raw". What is it trained to do, and what can't it do that an assistant can?</li>
+    <li>Is post-training one term or three (SFT, RLHF, DPO)? Where would a reader look first?</li>
+    <li>Can you explain stopping with the loop from your next-token prediction entry, and link to it?</li>
+    <li>Where does the chat template belong: in base model, in post-training, as its own term, or later in lesson 10 with messages?</li>
+    <li>What should a reader avoid saying? (Candidates: "fine-tuning teaches the model your facts", "the assistant is a different kind of model". Do you agree with both?)</li>
+  </ul>
+  Bring the drafts back and I'll challenge them.
+</div>
+
+<div class="box">
+  <span class="label">Primary source</span>
+  <a href="https://www.youtube.com/watch?v=7xTGNNLPyMI&amp;t=2572s">Andrej Karpathy, "Deep Dive into LLMs like ChatGPT"</a>, from 42:52 ("Llama 3.1 base model inference") to 1:20:32, about 38 minutes. He prompts a real base model, then walks through how post-training conversations are written. Then read the first paragraph of the <a href="https://arxiv.org/abs/2203.02155">InstructGPT abstract</a> (2 min). The <a href="https://huggingface.co/docs/transformers/chat_templating">Hugging Face chat templates guide</a> is the reference for section 2.
+</div>
+
+<p><em>Anything unclear, or did a run surprise you? Ask me. I'm your teacher, and a good follow-up question is often worth more than the next lesson.</em></p>
+
+<h3>Sources</h3>
+<ol style="font-size:0.85rem">
+  <li id="s1"><a href="https://huggingface.co/docs/transformers/chat_templating">Hugging Face, "Chat templates"</a> (Transformers v5.23, read 2026-11-18): all causal LMs continue a token sequence; base vs chat fine-tuning; control tokens; <code>add_generation_prompt</code>; wrong control tokens give "drastically worse performance".</li>
+  <li id="s2"><a href="https://www.youtube.com/watch?v=7xTGNNLPyMI">Andrej Karpathy, "Deep Dive into LLMs like ChatGPT"</a> (2025): chapters "Llama 3.1 base model inference" (42:52), "pretraining to post-training" (59:23), "post-training data (conversations)" (1:01:06).</li>
+  <li id="s3"><a href="https://huggingface.co/HuggingFaceTB/SmolLM2-360M-Instruct">SmolLM2-360M-Instruct model card</a> and <a href="https://huggingface.co/datasets/HuggingFaceTB/smol-smoltalk">smol-smoltalk dataset</a> (read 2026-11-18): 4T pretraining tokens; SFT then DPO on UltraFeedback; 484,570 conversations; Apache 2.0.</li>
+  <li id="s4"><a href="https://arxiv.org/abs/2203.02155">Ouyang et al., "Training language models to follow instructions with human feedback"</a> (InstructGPT, 2022): bigger isn't inherently better at following intent; 1.3B preferred to 175B GPT-3.</li>
+  <li id="s5"><a href="https://developers.openai.com/cookbook/articles/openai-harmony">OpenAI, "OpenAI Harmony Response Format"</a> (read 2026-11-18): gpt-oss's chat format and special tokens; it doesn't work correctly without them; API providers apply the format for you.</li>
+</ol>
+
+<footer class="lesson-foot">
+  <nav>
+    <span>Previous: <a href="0003-context-window-and-output-limits.html">Lesson 3, Context window and output limits</a></span>
+    <span>Reference: <a href="../reference/base-vs-assistant.html">Base model vs assistant</a> · <a href="../reference/generation-loop.html">The generation loop</a> · <a href="../reference/context-budget.html">Context budget</a></span>
+    <span>Next: Lesson 5, Reasoning models (not yet written)</span>
+  </nav>
+</footer>
+
+</main>
+<script src="../assets/quiz.js"></script>
+<script src="../assets/match.js"></script>
+</body>
+</html>

@@ -26,6 +26,17 @@ Prices and limits change often. Every number used in a lesson cites the page and
 - [Article: "Mastering LLM Techniques: Inference Optimization" (NVIDIA, Verma & Vaidya, 2023)](https://developer.nvidia.com/blog/mastering-llm-techniques-inference-optimization/)
   Prefill (parallel over the prompt) vs decode (one token at a time, memory-bound), plus KV caching and batching. Use for: why output is slower than input; lessons 2, 12, 15.
 
+### Base models and post-training (lesson 4, 10)
+
+- [Docs: "Chat templates" (Hugging Face Transformers)](https://huggingface.co/docs/transformers/chat_templating)
+  All causal LMs continue a token sequence; how messages become one string with control tokens; `add_generation_prompt`; wrong control tokens give "drastically worse performance". Use for: lesson 4; fills the chat-template gap for lesson 10.
+- [Paper: "Training language models to follow instructions with human feedback" (InstructGPT, Ouyang et al., 2022)](https://arxiv.org/abs/2203.02155)
+  SFT + RLHF; labelers preferred 1.3B InstructGPT to 175B GPT-3. Use for: why post-training matters more than scale for following intent.
+- [Model: SmolLM2-360M](https://huggingface.co/HuggingFaceTB/SmolLM2-360M) · [-Instruct](https://huggingface.co/HuggingFaceTB/SmolLM2-360M-Instruct) · [smol-smoltalk](https://huggingface.co/datasets/HuggingFaceTB/smol-smoltalk)
+  Matched base/instruct pair (4T pretraining tokens; SFT on 484,570 conversations, then DPO). Use for: the lesson 4 experiment, offline.
+- [OpenAI: Harmony response format (gpt-oss)](https://developers.openai.com/cookbook/articles/openai-harmony)
+  OpenAI's published chat format and special tokens for its open-weight models; API providers apply it for you. Use for: a provider example of roles-as-tokens.
+
 ### Variance and reliability (area 2, 5)
 
 - [Article: "Defeating Nondeterminism in LLM Inference" (Thinking Machines, 2025)](https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/)
@@ -90,5 +101,5 @@ Podcast notes below come from show notes and summaries; marked _not yet listened
 
 - **Provider-neutral latency numbers** (time to first token, tokens/sec by model tier): no primary source yet; independent benchmarks (e.g. Artificial Analysis) need vetting before use.
 - **OpenAI pricing and Batch API pages**: not yet read; needed for side-by-side numbers.
-- **Messages → token sequence (chat templates)**: need a primary source (e.g. Hugging Face chat templating docs) showing how roles become one sequence.
+- **Messages → token sequence (chat templates)**: filled by the HF chat templates guide (2026-11-18). Anthropic and OpenAI don't publish their hosted models' formats.
 - **Model tiers**: provider model-overview pages for the current family trade-offs.
