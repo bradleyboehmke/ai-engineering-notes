@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Base model vs assistant</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main>
+<header class="lesson-head">
+  <div class="kicker">LLM mechanics · Reference</div>
+  <h1>Base model vs assistant</h1>
+  <p>From <a href="../lessons/0004-base-model-vs-assistant.html">Lesson 4</a>. Same loop, different weights: where assistant behaviour comes from.</p>
+</header>
+
+<h2>The pipeline</h2>
+<pre><code>documents (trillions of tokens) ──pretraining──▶ base model       continues any document
+conversations (SFT)            ──┐
+preference pairs (RLHF / DPO)  ──┴post-training▶ assistant        answers, then ends its turn
+
+both:  tokens → model → next token → append → repeat   (lesson 2's loop, unchanged)</code></pre>
+
+<h2>Terms</h2>
+<div class="table-wrap"><table>
+  <tbody>
+    <tr><th>Base model</th><td>The result of pretraining. Predicts the next token of a document, so it continues text rather than replying.<a class="cite" href="https://huggingface.co/docs/transformers/chat_templating">HF</a></td></tr>
+    <tr><th>Post-training</th><td>Training after pretraining that shapes behaviour: usually SFT, then a preference stage</td></tr>
+    <tr><th>SFT</th><td>Supervised fine-tuning on example conversations (SmolLM2-Instruct: ~485K)<a class="cite" href="https://huggingface.co/datasets/HuggingFaceTB/smol-smoltalk">HF</a></td></tr>
+    <tr><th>RLHF / DPO</th><td>Preference tuning toward replies people rated better<a class="cite" href="https://arxiv.org/abs/2203.02155">InstructGPT</a></td></tr>
+    <tr><th>Assistant</th><td>Also called an instruct or chat model. A post-trained model that answers in a conversation format</td></tr>
+    <tr><th>Chat template</th><td>Renders a list of messages into one token string with role markers. Specific to each model family.<a class="cite" href="https://huggingface.co/docs/transformers/chat_templating">HF</a></td></tr>
+    <tr><th>Generation prompt</th><td>The empty assistant turn at the end of the template (<code>add_generation_prompt=True</code>) that the model fills</td></tr>
+    <tr><th>End-of-turn token</th><td>Closes each turn (<code>&lt;|im_end|&gt;</code>, <code>&lt;|end|&gt;</code>). An assistant stops by choosing it.</td></tr>
+  </tbody>
+</table></div>
+
+<h2>Formats seen so far</h2>
+<pre><code>ChatML (SmolLM2, Qwen)   &lt;|im_start|&gt;user\n…&lt;|im_end|&gt;\n&lt;|im_start|&gt;assistant\n
+Harmony (OpenAI gpt-oss)  &lt;|start|&gt;user&lt;|message|&gt;…&lt;|end|&gt;&lt;|start|&gt;assistant
+Hosted APIs               you send messages; the provider handles the format</code></pre>
+
+<h2>Consequences for builders</h2>
+<div class="table-wrap"><table>
+  <tbody>
+    <tr><th>Wrong or no template</th><td>No error, just worse output. Always use <code>apply_chat_template</code> on open-weight models.</td></tr>
+    <tr><th>Hidden tokens</th><td>The template adds tokens, and sometimes a default system prompt, that you didn't write but still pay for</td></tr>
+    <tr><th>Base models</th><td>Steer them with a document whose next line is the answer (few-shot), plus a stop sequence</td></tr>
+    <tr><th>Knowledge vs behaviour</th><td>Facts mostly come from pretraining or the context. Post-training shapes format, stopping, tone, and refusals.</td></tr>
+    <tr><th>Model upgrades</th><td>New post-training can change behaviour even when the prompt is the same. Rerun your evals.</td></tr>
+  </tbody>
+</table></div>
+
+<h2>Measured (SmolLM2-360M, greedy, max_tokens=60, 2026-11-18)</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Run</th><th class="num">Generated</th><th>Stop</th><th>Did the task?</th></tr></thead>
+  <tbody>
+    <tr><td>Base · raw</td><td class="num">60</td><td>cap</td><td>No: invented Q4–Q7</td></tr>
+    <tr><td>Instruct · raw</td><td class="num">28</td><td>end of turn</td><td>No: invented Q4</td></tr>
+    <tr><td>Instruct · template</td><td class="num">22</td><td>end of turn</td><td>Yes</td></tr>
+    <tr><td>Base · template</td><td class="num">60</td><td>cap</td><td>No: echoed, degenerated</td></tr>
+    <tr><td>Base · few-shot</td><td class="num">60</td><td>cap</td><td>Yes, then kept writing</td></tr>
+  </tbody>
+</table></div>
+<p style="font-size:0.85rem;color:var(--muted)">Run it yourself: <code>experiments/base_vs_instruct.py "prompt" max_tokens</code>. Add your own rows here.</p>
+</main>
+</body>
+</html>

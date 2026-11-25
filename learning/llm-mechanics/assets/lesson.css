@@ -162,3 +162,22 @@ footer.lesson-foot nav { display: flex; justify-content: space-between; gap: 1re
 .budget-verdict.warn { background: var(--callout-bg); border-left: 3px solid var(--accent); }
 .budget-verdict.bad { background: var(--bad-bg); }
 .budget-field select { width: 17rem; }
+
+/* Match outputs to sources (assets/match.js) */
+.match { margin: 1rem 0; }
+.match-item { border-top: 1px solid var(--rule); padding: 0.8rem 0; }
+.match-head { font-variant: small-caps; letter-spacing: 0.05em; color: var(--muted); font-size: 0.85rem; }
+.match-item pre { white-space: pre-wrap; word-break: break-word; margin: 0.4rem 0; }
+.match-opts { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.match-opt {
+  font: inherit; font-size: 0.82rem; color: var(--fg); background: transparent;
+  border: 1px solid var(--rule); border-radius: 5px; padding: 0.3rem 0.6rem; cursor: pointer;
+}
+.match-opt:hover:not([disabled]) { border-color: var(--accent); }
+.match-opt.correct { background: var(--ok-bg); border-color: var(--ok); }
+.match-opt.wrong { background: var(--bad-bg); border-color: var(--bad); }
+.match-opt[disabled] { cursor: default; }
+.match-item .why { display: none; font-size: 0.9rem; color: var(--muted); margin: 0.4rem 0 0; }
+.match-item.answered .why { display: block; }
+.match-score { font-variant: small-caps; color: var(--muted); }
+@media print { .match-item .why { display: block; } }
