@@ -181,3 +181,9 @@ footer.lesson-foot nav { display: flex; justify-content: space-between; gap: 1re
 .match-item.answered .why { display: block; }
 .match-score { font-variant: small-caps; color: var(--muted); }
 @media print { .match-item .why { display: block; } }
+
+/* Request-cost calculator (assets/cost.js); reuses the .budget-* layout */
+.cost { border: 1px solid var(--rule); border-radius: 6px; padding: 1rem 1.1rem; margin: 1.4rem 0; }
+.cost .budget-field input { width: 8rem; }
+.cost-think { background: repeating-linear-gradient(45deg, var(--accent) 0 4px, var(--code-bg) 4px 8px); }
+.cost-total { font-size: 0.95rem; margin: 0.7rem 0 0; font-variant-numeric: tabular-nums; }

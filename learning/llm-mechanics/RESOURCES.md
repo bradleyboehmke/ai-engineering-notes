@@ -37,6 +37,14 @@ Prices and limits change often. Every number used in a lesson cites the page and
 - [OpenAI: Harmony response format (gpt-oss)](https://developers.openai.com/cookbook/articles/openai-harmony)
   OpenAI's published chat format and special tokens for its open-weight models; API providers apply it for you. Use for: a provider example of roles-as-tokens.
 
+### Reasoning models (lesson 5)
+
+- [Paper: "DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning" (DeepSeek-AI, 2025)](https://arxiv.org/abs/2501.12948)
+  Reasoning built through pure RL without human-labeled reasoning trajectories; self-reflection and verification emerge. Use for: where thinking behaviour comes from (lesson 5).
+- [Anthropic: Thinking](https://platform.claude.com/docs/en/build-with-claude/thinking) · [Steering thinking (pricing section)](https://platform.claude.com/docs/en/build-with-claude/thinking-steering-and-cost#pricing) · [Effort](https://platform.claude.com/docs/en/build-with-claude/effort)
+  Adaptive thinking, `display` (omitted default on Claude 5 models; summaries come from a different model; raw chain of thought never returned), billed vs visible output, `usage.output_tokens_details.thinking_tokens`, prior-turn thinking billed as input on keep-all models, effort levels and per-model defaults (read 2026-11-25). Use for: lesson 5; the "Extended thinking" page is now legacy (`budget_tokens`).
+- Karpathy Deep Dive (above), chapters from 2:07:28 (SFT to RL, RL, DeepSeek-R1, AlphaGo) to 2:48:26. Use for: lesson 5's primary source.
+
 ### Variance and reliability (area 2, 5)
 
 - [Article: "Defeating Nondeterminism in LLM Inference" (Thinking Machines, 2025)](https://thinkingmachines.ai/blog/defeating-nondeterminism-in-llm-inference/)
