@@ -1,0 +1,36 @@
+/* Thinking-cost calculator (widgets/thinking-cost.js). Uses the site's
+   Bootstrap variables where they exist, so it follows the Quarto theme. */
+.thinking-cost {
+  --tc-in: #6c757d;
+  --tc-out: #2780e3;
+  --tc-out-2: #1a68c0;
+  --tc-free: var(--bs-tertiary-bg, #f1f3f5);
+  --tc-line: var(--bs-border-color, #dee2e6);
+  --tc-muted: var(--bs-secondary-color, #6c757d);
+  --tc-surface: var(--bs-body-bg, #fff);
+  --tc-warn-bg: var(--bs-warning-bg-subtle, #fff3cd);
+  --tc-warn-ink: var(--bs-warning-text-emphasis, #664d03);
+  border: 1px solid var(--tc-line);
+  border-radius: 10px;
+  padding: 1.1rem 1.2rem;
+  margin: 1.2rem 0;
+  font-size: 0.95rem;
+}
+.thinking-cost .tc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem 1rem; }
+@media (max-width: 640px) { .thinking-cost .tc-grid { grid-template-columns: 1fr; } }
+.thinking-cost .tc-field { display: flex; flex-direction: column; font-size: 0.8rem; color: var(--tc-muted); min-width: 0; }
+.thinking-cost select, .thinking-cost input[type=number] {
+  font: inherit; font-size: 0.9rem; color: var(--bs-body-color, #212529); background: var(--tc-surface);
+  border: 1px solid var(--tc-line); border-radius: 6px; padding: 0.35rem 0.5rem; margin-top: 0.2rem; width: 100%;
+}
+.thinking-cost .tc-bar { display: flex; height: 1.3rem; border-radius: 4px; overflow: hidden; background: var(--tc-free); margin: 1.2rem 0 0.5rem; }
+.thinking-cost .tc-seg { height: 100%; flex: 0 0 auto; }
+.thinking-cost .tc-in { background: var(--tc-in); }
+.thinking-cost .tc-ans { background: var(--tc-out); }
+.thinking-cost .tc-think { background: repeating-linear-gradient(45deg, var(--tc-out-2) 0 4px, var(--tc-surface) 4px 7px); }
+.thinking-cost .tc-legend { display: flex; flex-wrap: wrap; gap: 0.3rem 1rem; font-size: 0.78rem; color: var(--tc-muted); font-variant-numeric: tabular-nums; }
+.thinking-cost .tc-legend i { display: inline-block; width: 0.7rem; height: 0.7rem; border-radius: 2px; margin-right: 0.35rem; vertical-align: -1px; }
+.thinking-cost .tc-status { margin-top: 0.9rem; padding: 0.6rem 0.8rem; border-radius: 6px; background: var(--tc-free); line-height: 1.5; font-variant-numeric: tabular-nums; }
+.thinking-cost .tc-extra { margin-top: 0.5rem; font-size: 0.85rem; color: var(--tc-muted); }
+.thinking-cost .tc-warn { color: var(--tc-warn-ink); background: var(--tc-warn-bg); padding: 0.45rem 0.7rem; border-radius: 6px; }
+.thinking-cost [hidden] { display: none !important; }

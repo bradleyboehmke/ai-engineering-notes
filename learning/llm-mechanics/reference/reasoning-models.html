@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Reasoning models</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main>
+<header class="lesson-head">
+  <div class="kicker">LLM mechanics · Reference</div>
+  <h1>Reasoning models</h1>
+  <p>From <a href="../lessons/0005-reasoning-models.html">Lesson 5</a>. Same loop, more generated tokens before the answer. You pay for all of them and see few of them.</p>
+</header>
+
+<h2>The picture</h2>
+<pre><code>input ──▶ [ thinking / reasoning tokens ] [ answer tokens ]
+           output price, hidden/summary    output price, shown
+           └──────── both inside max_tokens / max_output_tokens ────────┘
+
+where it comes from:  post-training + RL on checkable answers (maths, code)
+why it helps:         each token conditions on the steps already written</code></pre>
+
+<h2>Terms</h2>
+<div class="table-wrap"><table>
+  <tbody>
+    <tr><th>Reasoning model</th><td>A model post-trained (largely by RL) to generate a working-out before its answer<a class="cite" href="https://arxiv.org/abs/2501.12948">R1</a></td></tr>
+    <tr><th>Thinking / reasoning tokens</th><td>The tokens of that working-out. Anthropic says "thinking", OpenAI says "reasoning". Billed as output.</td></tr>
+    <tr><th>Test-time compute</th><td>Spending more computation at inference (more generated tokens) to improve an answer</td></tr>
+    <tr><th>Adaptive thinking</th><td>The model decides per request whether and how much to think. Easy inputs may get no thinking block.<a class="cite" href="https://platform.claude.com/docs/en/build-with-claude/thinking-steering-and-cost">A</a></td></tr>
+    <tr><th>Effort</th><td>A soft control over how many tokens the model spends, thinking included. "A behavioral signal, not a strict token budget."<a class="cite" href="https://platform.claude.com/docs/en/build-with-claude/effort">A</a></td></tr>
+    <tr><th>Thinking summary</th><td>A readable summary of the reasoning, written by a different model. Never the raw chain of thought.<a class="cite" href="https://platform.claude.com/docs/en/build-with-claude/thinking">A</a></td></tr>
+  </tbody>
+</table></div>
+
+<h2>Provider side by side (read 2026-11-25)</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th></th><th>Anthropic</th><th>OpenAI</th></tr></thead>
+  <tbody>
+    <tr><th>Control</th><td><code>output_config.effort</code> low…max</td><td><code>reasoning.effort</code> none…max (per model)</td></tr>
+    <tr><th>Default</th><td>medium (Opus 5.5, Haiku 5.5), high (others)</td><td>Per model (GPT-5.6: medium)</td></tr>
+    <tr><th>Turn off</th><td>Haiku 5.5: <code>disabled</code> at ≤high · Sonnet 5.5: <code>between_tools</code> · Opus 5.5: not possible</td><td><code>none</code> where supported</td></tr>
+    <tr><th>Visible</th><td><code>display</code>: omitted (default) / summarized</td><td>Summary opt-in via <code>reasoning.summary</code></td></tr>
+    <tr><th>Usage field</th><td><code>usage.output_tokens_details.thinking_tokens</code></td><td><code>usage.output_tokens_details.reasoning_tokens</code></td></tr>
+    <tr><th>Prior turns</th><td>Kept and billed as input on Haiku 5.5, Opus 4.5+, Sonnet 4.6+</td><td>Model-dependent: see the reasoning guide</td></tr>
+  </tbody>
+</table></div>
+
+<h2>Cost arithmetic</h2>
+<pre><code>cost = input × in_price + (thinking + answer) × out_price
+visible answer tokens ≈ output_tokens − thinking_tokens
+
+docs example: 25 in, 348 out, 312 thinking → ~88% of the bill is thinking
+(output is 5× input on current Claude models)</code></pre>
+
+<h2>Consequences for builders</h2>
+<div class="table-wrap"><table>
+  <tbody>
+    <tr><th>Set effort explicitly</th><td>Defaults differ by model, so an upgrade can silently change the bill</td></tr>
+    <tr><th>Size <code>max_tokens</code> for thinking</th><td>Otherwise you get <code>stop_reason: max_tokens</code>, maybe with no text, and you still pay</td></tr>
+    <tr><th>Estimate from usage</th><td>Cost per request is a distribution over inputs. Measure on real ones.</td></tr>
+    <tr><th>Tune per route</th><td>Low for chat and high-volume work, higher for multi-step reasoning. Confirm with evals.</td></tr>
+    <tr><th><code>display: omitted</code></th><td>Faster first visible token. Same cost.</td></tr>
+    <tr><th>Summaries aren't audit trails</th><td>They're written by another model, about reasoning that was trained for reward</td></tr>
+  </tbody>
+</table></div>
+
+<h2>Measured (Claude Haiku 5.5, <code>experiments/thinking_api.py</code>)</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Run</th><th class="num">Output</th><th class="num">Thinking</th><th class="num">Cost</th><th>Correct?</th></tr></thead>
+  <tbody>
+    <tr><td>off</td><td class="num"></td><td class="num"></td><td class="num"></td><td></td></tr>
+    <tr><td>low</td><td class="num"></td><td class="num"></td><td class="num"></td><td></td></tr>
+    <tr><td>medium</td><td class="num"></td><td class="num"></td><td class="num"></td><td></td></tr>
+    <tr><td>high</td><td class="num"></td><td class="num"></td><td class="num"></td><td></td></tr>
+  </tbody>
+</table></div>
+<p style="font-size:0.85rem;color:var(--muted)">Fill this in from your run, and add the date.</p>
+</main>
+</body>
+</html>

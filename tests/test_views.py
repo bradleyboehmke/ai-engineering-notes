@@ -17,6 +17,7 @@ LLM_MECHANICS = [  # the llm-mechanics samples, alphabetical by title
     "dictionary/base-model.html",
     "dictionary/context-window.html",
     "dictionary/next-token-prediction.html",
+    "dictionary/reasoning-model.html",
     "topics/sample-leading-tokenization.html",
     "dictionary/sample-token.html",
     "tools/sample-tool.html",
@@ -31,6 +32,7 @@ def test_dictionary_lists_its_terms(site):
         "dictionary/base-model.html",
         "dictionary/context-window.html",
         "dictionary/next-token-prediction.html",
+        "dictionary/reasoning-model.html",
         "dictionary/sample-token.html",
         "dictionary/token.html",
         "dictionary/tokenizer.html",
@@ -48,6 +50,7 @@ def test_recent_shows_pages_as_cards_newest_first(site):
     html = (site / "recent.html").read_text()
     assert "quarto-listing-container-grid" in html
     assert listings(site, "recent.html")["recent"] == [
+        "dictionary/reasoning-model.html",
         "dictionary/base-model.html",
         "dictionary/context-window.html",
         "dictionary/next-token-prediction.html",
@@ -57,7 +60,6 @@ def test_recent_shows_pages_as_cards_newest_first(site):
         "tools/sample-tool.html",
         "prototypes/sample-prototype.html",
         "topics/sample-leading-tokenization.html",
-        "topics/sample-tokenization.html",
     ]
 
 
@@ -161,7 +163,7 @@ def test_view_check_fails_when_a_page_is_missing_from_the_views(site, tmp_path):
     assert check(root, site) == [
         f'essays/index.html: listing "essays" {missing}',
         f'recent.html: listing "recent" {missing}',
-        'recent.html: listing "recent" lists unexpected topics/sample-tokenization.html',
+        'recent.html: listing "recent" lists unexpected topics/sample-leading-tokenization.html',
         f'themes/evals.html: listing "theme" {missing}',
         f'path.html: listing "path-evals" {missing}',
     ]
@@ -313,10 +315,10 @@ def test_recent_shows_only_the_newest_ten(variant):
         "essays/newer-3.html",
         "essays/newer-2.html",
         "essays/newer-1.html",
+        "dictionary/reasoning-model.html",
         "dictionary/base-model.html",
         "dictionary/context-window.html",
         "dictionary/next-token-prediction.html",
-        "dictionary/token.html",
     ]
 
 
@@ -346,12 +348,12 @@ def test_view_check_expects_recent_to_drop_pages_older_than_the_newest_ten(site,
     assert recent == [
         f'recent.html: listing "recent" is missing essays/newer-{d}.html' for d in range(6, 0, -1)
     ] + [
+        'recent.html: listing "recent" lists unexpected dictionary/token.html',
         'recent.html: listing "recent" lists unexpected dictionary/tokenizer.html',
         'recent.html: listing "recent" lists unexpected essays/sample-essay.html',
         'recent.html: listing "recent" lists unexpected tools/sample-tool.html',
         'recent.html: listing "recent" lists unexpected prototypes/sample-prototype.html',
         'recent.html: listing "recent" lists unexpected topics/sample-leading-tokenization.html',
-        'recent.html: listing "recent" lists unexpected topics/sample-tokenization.html',
     ]
 
 
