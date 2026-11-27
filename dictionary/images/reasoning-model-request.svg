@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 270" role="img" aria-label="Within one request, the input is followed by thinking tokens and then answer tokens. Thinking tokens are billed as output and are hidden, omitted or summarized. Answer tokens are billed as output and are shown." font-size="15" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"><title>Within one request, the input is followed by thinking tokens and then answer tokens. Thinking tokens are billed as output and are hidden, omitted or summarized. Answer tokens are billed as output and are shown.</title>
+<defs><pattern id="hatch" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="12" fill="#1a68c0"/><rect width="6" height="12" fill="#2780e3"/></pattern></defs>
+<rect x="12" y="22" width="736" height="206" rx="10" fill="none" stroke="#212529" stroke-width="1.5"/>
+<rect x="28" y="12" width="126" height="20" fill="#fff"/>
+<text x="36" y="27" fill="#6c757d" font-size="13" letter-spacing="1">ONE REQUEST</text>
+<text x="32" y="62" fill="#212529" font-weight="600">Input</text>
+<text x="32" y="82" fill="#6c757d" font-size="14">what you send</text>
+<text x="244" y="62" fill="#212529" font-weight="600">Output</text>
+<text x="244" y="82" fill="#6c757d" font-size="14">everything it generates, one token at a time</text>
+<rect x="32" y="96" width="196" height="112" rx="5" fill="#6c757d"/>
+<rect x="244" y="96" width="290" height="112" rx="5" fill="url(#hatch)"/>
+<rect x="538" y="96" width="194" height="112" rx="5" fill="#2780e3"/>
+<g fill="#fff" font-weight="600" font-size="14">
+<text x="42" y="174">Your prompt</text>
+<text x="254" y="174" paint-order="stroke" stroke="#1a68c0" stroke-width="4">Thinking tokens</text>
+<text x="548" y="174">Answer tokens</text>
+</g>
+<g fill="#fff" font-size="12.5">
+<text x="42" y="194">billed as input</text>
+<text x="254" y="194" paint-order="stroke" stroke="#1a68c0" stroke-width="4">billed as output · hidden, omitted or summarized</text>
+<text x="548" y="194">billed as output · shown</text>
+</g>
+<text x="12" y="256" fill="#6c757d" font-size="14">Both output segments come out of the same loop. The API just labels the first stretch as a thinking block.</text>
+</svg>
